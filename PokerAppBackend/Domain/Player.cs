@@ -20,4 +20,6 @@ public sealed class Player(int seatIndex, string name, bool isBot)
     }
     
     public void SetHuman(string name) { Name = name; IsBot = false; }
+    
+    public void SetBot(string name) { Name = name; IsBot = true; }
 }

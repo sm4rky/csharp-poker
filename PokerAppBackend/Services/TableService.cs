@@ -52,6 +52,13 @@ public sealed class TableService : ITableService
         player.SetHuman(name);
     }
 
+    public void SetSeatToBot(string tableCode, int seatIndex)
+    {
+        var table = Get(tableCode);
+        var player = table.Players[seatIndex];
+        player.SetBot($"Bot {seatIndex + 1}");
+    }
+
     public void StartHand(string tableCode)
     {
         Get(tableCode).StartHand();

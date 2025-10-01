@@ -10,6 +10,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services.AddSignalR();
+
 builder.Services.AddSingleton<IDeckService, DeckService>();
 builder.Services.AddSingleton<ITableService, TableService>();
 
@@ -27,5 +29,7 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHub<RoomHub>("/roomhub");
 
 app.Run();
