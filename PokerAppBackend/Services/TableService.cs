@@ -1,11 +1,18 @@
 ﻿using System.Collections.Concurrent;
 using PokerAppBackend.Domain;
+using ShowdownResult = PokerAppBackend.Domain.ShowdownResult;
 
 namespace PokerAppBackend.Services;
 
 public sealed class TableService : ITableService
 {
     private readonly ConcurrentDictionary<string, Table> _tables = new();
+    private readonly IEvaluateHandService evaluateHandService;
+
+    public TableService(IEvaluateHandService evaluateHandService)
+    {
+        this.evaluateHandService = evaluateHandService;
+    }
 
     public string CreateTable(int playerCount, string name)
     {
@@ -77,5 +84,62 @@ public sealed class TableService : ITableService
     public void DealRiver(string tableCode)
     {
         Get(tableCode).DealRiver();
+    }
+
+    public int? Fold(string tableCode, int seatIndex)
+    {
+        var table = Get(tableCode);
+
+        if (table.Street is Street.Preflop or Street.Showdown)
+            throw new InvalidOperationException("Cannot fold in this state.");
+
+        if (seatIndex < 0 || seatIndex >= table.Players.Count)
+            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
+
+        var player = table.Players[seatIndex];
+        if (player.HasFolded) return null;
+        player.Fold();
+
+        var remainingContenders = table.Players
+            .Where(p => !p.HasFolded)
+            .Select(p => p.SeatIndex)
+            .ToList();
+
+        return remainingContenders.Count == 1 ? remainingContenders[0] : null;
+    }
+
+    public ShowdownResult Showdown(string tableCode)
+    {
+        var table = Get(tableCode);
+        if (table.Street is not Street.River)
+            throw new InvalidOperationException("Cannot showdown before river.");
+
+        var contenders = table.Players
+            .Where(player => !player.HasFolded)
+            .ToList();
+
+        if (contenders.Count == 0)
+            return new ShowdownResult { Winners = Array.Empty<int>(), Scored = new() };
+
+        var scored = new List<(Player Player, HandValue HandValue)>(contenders.Count);
+        foreach (var p in contenders)
+        {
+            var hv = evaluateHandService.EvaluateHand(p.Hole, table.Community);
+            scored.Add((p, hv));
+        }
+
+        var bestHand = scored.Max(tuple => tuple.HandValue);
+
+        var winners = scored
+            .Where(tuple => tuple.HandValue.CompareTo(bestHand) == 0)
+            .Select(tuple => tuple.Player.SeatIndex)
+            .OrderBy(seatIndex => seatIndex)
+            .ToArray();
+
+        return new ShowdownResult
+        {
+            Winners = winners,
+            Scored = scored
+        };
     }
 }

@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
+using PokerAppBackend.Contracts;
 using PokerAppBackend.Mappers;
 using PokerAppBackend.Records;
 using PokerAppBackend.Services;
@@ -151,6 +152,27 @@ public class RoomHub(ITableService tableService) : Hub
     {
         tableService.DealRiver(tableCode);
         await BroadcastTable(tableCode);
+    }
+
+    public async Task Fold(string token)
+    {
+        if (!PlayerMap.TryGetValue(token, out var playerInfo))
+            throw new HubException("Invalid player token.");
+
+        var winnerOrNull = tableService.Fold(playerInfo.TableCode, playerInfo.SeatIndex);
+        await BroadcastTable(playerInfo.TableCode);
+
+        if (winnerOrNull is int winner)
+        {
+            await Clients.Group($"table:{playerInfo.TableCode}")
+                .SendAsync("DefaultWinResult", new DefaultWinResultDto() { Winner = winner });
+        }
+    }
+
+    public async Task Showdown(string tableCode)
+    {
+        var result = tableService.Showdown(tableCode);
+        await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto(null));
     }
 
     private async Task BroadcastTable(string tableCode)

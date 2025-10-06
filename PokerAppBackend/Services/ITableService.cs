@@ -1,4 +1,5 @@
 ﻿using PokerAppBackend.Domain;
+using ShowdownResult = PokerAppBackend.Domain.ShowdownResult;
 
 namespace PokerAppBackend.Services;
 
@@ -12,4 +13,6 @@ public interface ITableService
     void DealFlop(string tableCode);
     void DealTurn(string tableCode);
     void DealRiver(string tableCode);
+    int? Fold(string tableCode, int seatIndex);
+    ShowdownResult Showdown(string tableCode);
 }
