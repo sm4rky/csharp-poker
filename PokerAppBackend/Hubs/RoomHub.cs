@@ -1,6 +1,7 @@
 ﻿using System.Collections.Concurrent;
 using Microsoft.AspNetCore.SignalR;
 using PokerAppBackend.Contracts;
+using PokerAppBackend.Domain;
 using PokerAppBackend.Mappers;
 using PokerAppBackend.Records;
 using PokerAppBackend.Services;
@@ -11,6 +12,9 @@ public class RoomHub(ITableService tableService) : Hub
 {
     private static readonly TimeSpan Grace = TimeSpan.FromSeconds(12);
 
+    //Countdown to next match
+    private static readonly TimeSpan ReadyWindow = TimeSpan.FromSeconds(15);
+
     //connectionId -> (tableCode, seatIndex, token)
     private static readonly ConcurrentDictionary<string, (string TableCode, int? SeatIndex, string? Token)>
         ConnectionMap = new();
@@ -19,6 +23,8 @@ public class RoomHub(ITableService tableService) : Hub
     private static readonly ConcurrentDictionary<string, PlayerSession> PlayerMap = new();
 
     private static readonly ConcurrentDictionary<string, CancellationTokenSource> PendingKicksMap = new();
+
+    private static readonly ConcurrentDictionary<string, ReadyInfo> PendingReadyTableMap = new();
 
     public async Task JoinRoom(string tableCode)
     {
@@ -166,6 +172,8 @@ public class RoomHub(ITableService tableService) : Hub
         {
             await Clients.Group($"table:{playerInfo.TableCode}")
                 .SendAsync("DefaultWinResult", new DefaultWinResultDto() { Winner = winner });
+
+            await BeginNextMatchCountdown(playerInfo.TableCode);
         }
     }
 
@@ -173,6 +181,7 @@ public class RoomHub(ITableService tableService) : Hub
     {
         var result = tableService.Showdown(tableCode);
         await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto(null));
+        await BeginNextMatchCountdown(tableCode);
     }
 
     private async Task BroadcastTable(string tableCode)
@@ -184,5 +193,81 @@ public class RoomHub(ITableService tableService) : Hub
             if (info.TableCode != tableCode) continue;
             await Clients.Client(connectionId).SendAsync("TableState", table.ToTableDto(info.SeatIndex));
         }
+    }
+
+    private async Task BeginNextMatchCountdown(string tableCode)
+    {
+        if (PendingReadyTableMap.TryRemove(tableCode, out var oldReadyInfo))
+        {
+            oldReadyInfo.CancellationTokenSource.Cancel();
+            oldReadyInfo.CancellationTokenSource.Dispose();
+        }
+
+        var table = tableService.Get(tableCode);
+        var info = new ReadyInfo
+        {
+            DeadlineUtc = DateTime.UtcNow.Add(ReadyWindow),
+        };
+
+        foreach (var botSeat in table.Players.Where(player => player.IsBot).Select(player => player.SeatIndex))
+        {
+            info.ReadySeats.TryAdd(botSeat, 0);
+        }
+
+        PendingReadyTableMap[tableCode] = info;
+        await BroadcastReadyState(tableCode);
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(ReadyWindow, info.CancellationTokenSource.Token);
+            }
+            catch (OperationCanceledException)
+            {
+                /* next match starts early */
+            }
+
+            //Delay time to next match ends
+            try
+            {
+                if (PendingReadyTableMap.TryRemove(tableCode, out _))
+                    await StartHand(tableCode);
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
+        });
+    }
+
+    public async Task ReadyForNextMatch(string token)
+    {
+        if (!PlayerMap.TryGetValue(token, out var playerInfo))
+            throw new HubException("Invalid player token.");
+
+        if (!PendingReadyTableMap.TryGetValue(playerInfo.TableCode, out var readyTableInfo)) return;
+
+        if (readyTableInfo.ReadySeats.TryAdd(playerInfo.SeatIndex, 0))
+        {
+            await BroadcastReadyState(playerInfo.TableCode);
+            var table = tableService.Get(playerInfo.TableCode);
+            if (table.Players.Count <= readyTableInfo.ReadySeats.Count)
+            {
+                if (PendingReadyTableMap.TryRemove(playerInfo.TableCode, out var readyInfo))
+                {
+                    readyInfo.CancellationTokenSource.Cancel();
+                    readyInfo.CancellationTokenSource.Dispose();
+                    await StartHand(playerInfo.TableCode);
+                }
+            }
+        }
+    }
+
+    private Task BroadcastReadyState(string tableCode)
+    {
+        return !PendingReadyTableMap.TryGetValue(tableCode, out var readyInfo)
+            ? Task.CompletedTask
+            : Clients.Group($"table:{tableCode}").SendAsync("ReadyState", readyInfo.ToReadyInfoDto());
     }
 }
