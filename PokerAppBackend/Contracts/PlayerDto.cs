@@ -7,4 +7,5 @@ public sealed class PlayerDto
     public bool IsBot { get; init; }
     public bool HasFolded { get; init; }
     public List<CardDto> Hole { get; init; } = new();
+    public List<string> LegalActions { get; init; } = new();
 }

@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.SignalR;
 using PokerAppBackend.Contracts;
 using PokerAppBackend.Domain;
 using PokerAppBackend.Mappers;
-using PokerAppBackend.Records;
 using PokerAppBackend.Services;
 
 namespace PokerAppBackend.Hubs;
@@ -142,6 +141,7 @@ public class RoomHub(ITableService tableService) : Hub
         await BroadcastTable(tableCode);
     }
 
+    //Consider drop DealFlop, DealTurn, DealRiver later
     public async Task DealFlop(string tableCode)
     {
         tableService.DealFlop(tableCode);
@@ -160,18 +160,45 @@ public class RoomHub(ITableService tableService) : Hub
         await BroadcastTable(tableCode);
     }
 
+    public async Task Check(string token)
+    {
+        if (!PlayerMap.TryGetValue(token, out var playerInfo))
+            throw new HubException("Invalid player token.");
+
+        tableService.Check(playerInfo.TableCode, playerInfo.SeatIndex);
+        await BroadcastTable(playerInfo.TableCode);
+    }
+
+    public async Task Call(string token)
+    {
+        if (!PlayerMap.TryGetValue(token, out var playerInfo))
+            throw new HubException("Invalid player token.");
+
+        tableService.Call(playerInfo.TableCode, playerInfo.SeatIndex);
+        await BroadcastTable(playerInfo.TableCode);
+    }
+
+    public async Task Raise(string token)
+    {
+        if (!PlayerMap.TryGetValue(token, out var playerInfo))
+            throw new HubException("Invalid player token.");
+
+        tableService.Raise(playerInfo.TableCode, playerInfo.SeatIndex);
+        await BroadcastTable(playerInfo.TableCode);
+    }
+
     public async Task Fold(string token)
     {
         if (!PlayerMap.TryGetValue(token, out var playerInfo))
             throw new HubException("Invalid player token.");
 
-        var winnerOrNull = tableService.Fold(playerInfo.TableCode, playerInfo.SeatIndex);
+        var foldResult = tableService.Fold(playerInfo.TableCode, playerInfo.SeatIndex);
         await BroadcastTable(playerInfo.TableCode);
 
-        if (winnerOrNull is int winner)
+        if (foldResult.IsMatchOver)
         {
             await Clients.Group($"table:{playerInfo.TableCode}")
-                .SendAsync("DefaultWinResult", new DefaultWinResultDto() { Winner = winner });
+                .SendAsync("DefaultWinResult", new DefaultWinResultDto() { Winner = foldResult.Winner });
 
             await BeginNextMatchCountdown(playerInfo.TableCode);
         }

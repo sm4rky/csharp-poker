@@ -86,26 +86,56 @@ public sealed class TableService : ITableService
         Get(tableCode).DealRiver();
     }
 
-    public int? Fold(string tableCode, int seatIndex)
+    public void Check(string tableCode, int seatIndex)
     {
         var table = Get(tableCode);
 
-        if (table.Street is Street.Preflop or Street.Showdown)
+        if (table.Street is Street.Showdown)
+            throw new InvalidOperationException("Hand already ended.");
+
+        if (seatIndex < 0 || seatIndex >= table.Players.Count)
+            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
+
+        table.Check(seatIndex);
+    }
+
+    public void Call(string tableCode, int seatIndex)
+    {
+        var table = Get(tableCode);
+
+        if (table.Street is Street.Showdown)
+            throw new InvalidOperationException("Hand already ended.");
+
+        if (seatIndex < 0 || seatIndex >= table.Players.Count)
+            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
+
+        table.Call(seatIndex);
+    }
+
+    public void Raise(string tableCode, int seatIndex)
+    {
+        var table = Get(tableCode);
+
+        if (table.Street is Street.Showdown)
+            throw new InvalidOperationException("Hand already ended.");
+
+        if (seatIndex < 0 || seatIndex >= table.Players.Count)
+            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
+
+        table.Raise(seatIndex);
+    }
+
+    public FoldResult Fold(string tableCode, int seatIndex)
+    {
+        var table = Get(tableCode);
+
+        if (table.Street is Street.Showdown)
             throw new InvalidOperationException("Cannot fold in this state.");
 
         if (seatIndex < 0 || seatIndex >= table.Players.Count)
             throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
 
-        var player = table.Players[seatIndex];
-        if (player.HasFolded) return null;
-        player.Fold();
-
-        var remainingContenders = table.Players
-            .Where(p => !p.HasFolded)
-            .Select(p => p.SeatIndex)
-            .ToList();
-
-        return remainingContenders.Count == 1 ? remainingContenders[0] : null;
+        return table.Fold(seatIndex);
     }
 
     public ShowdownResult Showdown(string tableCode)

@@ -16,7 +16,8 @@ public static class PlayerMapper
             HasFolded = player.HasFolded,
             Hole = canSeeHole
                 ? player.Hole.Select(card => card.ToCardDto()).ToList()
-                : new List<CardDto>()
+                : new List<CardDto>(),
+            LegalActions = player.LegalActions.Select(action => action.ToString()).ToList()
         };
     }
 }

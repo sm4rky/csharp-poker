@@ -1,4 +1,4 @@
-namespace PokerAppBackend.Records;
+namespace PokerAppBackend.Domain;
 
 public record PlayerSession(string TableCode, int SeatIndex, string Name)
 {
