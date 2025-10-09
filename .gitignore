@@ -1,5 +1,7 @@
 /PokerHubTester
 /PokerAppBackend/bin
 /PokerAppBackend/obj
+/PokerAppFrontend/bin
+/PokerAppFrontend/obj
 .idea
 PokerApp.sln.DotSettings.user
