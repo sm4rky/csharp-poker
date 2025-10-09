@@ -13,6 +13,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddSignalR();
 
 builder.Services.AddSingleton<IDeckService, DeckService>();
+builder.Services.AddSingleton<IEvaluateHandService, EvaluateHandService>();
 builder.Services.AddSingleton<ITableService, TableService>();
 
 var app = builder.Build();
