@@ -141,7 +141,7 @@ public sealed class TableService : ITableService
     public ShowdownResult Showdown(string tableCode)
     {
         var table = Get(tableCode);
-        if (table.Street is not Street.River)
+        if (table.Street is not Street.River and not Street.Showdown)
             throw new InvalidOperationException("Cannot showdown before river.");
 
         var contenders = table.Players

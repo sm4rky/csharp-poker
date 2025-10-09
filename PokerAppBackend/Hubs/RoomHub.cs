@@ -167,6 +167,7 @@ public class RoomHub(ITableService tableService) : Hub
 
         tableService.Check(playerInfo.TableCode, playerInfo.SeatIndex);
         await BroadcastTable(playerInfo.TableCode);
+        await ShowdownIfRiverOver(playerInfo.TableCode);
     }
 
     public async Task Call(string token)
@@ -176,6 +177,7 @@ public class RoomHub(ITableService tableService) : Hub
 
         tableService.Call(playerInfo.TableCode, playerInfo.SeatIndex);
         await BroadcastTable(playerInfo.TableCode);
+        await ShowdownIfRiverOver(playerInfo.TableCode);
     }
 
     public async Task Raise(string token)
@@ -201,11 +203,21 @@ public class RoomHub(ITableService tableService) : Hub
                 .SendAsync("DefaultWinResult", new DefaultWinResultDto() { Winner = foldResult.Winner });
 
             await BeginNextMatchCountdown(playerInfo.TableCode);
+            return;
         }
+
+        await ShowdownIfRiverOver(playerInfo.TableCode);
     }
 
-    public async Task Showdown(string tableCode)
+    private async Task ShowdownIfRiverOver(string tableCode)
     {
+        var table = tableService.Get(tableCode);
+
+        if (table.Street != Street.Showdown) return;
+
+        var contenders = table.Players.Count(p => !p.HasFolded);
+        if (contenders <= 1) return;
+
         var result = tableService.Showdown(tableCode);
         await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto(null));
         await BeginNextMatchCountdown(tableCode);
