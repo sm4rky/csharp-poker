@@ -1,2 +1,29 @@
 @page "/"
-<h1>Lobby</h1>
+
+<div class="h-screen flex flex-col justify-center items-center space-y-6">
+    <div class="space-y-4 text-center">
+        <h1 class="text-5xl font-bold text-balance">
+            Lobby
+        </h1>
+        <p class="text-muted-foreground text-lg">Create a new room or join an existing game</p>
+    </div>
+
+    <div class="flex space-x-6 mb-8 opacity-20">
+        <Blazicon Svg="Lucide.Spade"></Blazicon>
+        <Blazicon Svg="Lucide.Club"></Blazicon>
+        <Blazicon Svg="Lucide.Diamond" class="text-danger"></Blazicon>
+        <Blazicon Svg="Lucide.Heart" class="text-danger"></Blazicon>
+    </div>
+
+    <div class="max-w-2xl p-12 shadow-md rounded-md bg-white flex flex-col">
+        <div
+            class="flex gap-6 pb-6 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:w-full after:h-px after:bg-gradient-to-r after:from-transparent after:via-gray-300 after:to-transparent">
+            <RadzenButton Text="Create Room" ButtonStyle="ButtonStyle.Primary" Size="ButtonSize.Large" Class="flex-1"/>
+            <RadzenButton Text="Join Room" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Large" Class="flex-1"/>
+        </div>
+
+        <p class="pt-6 text-sm text-center text-muted-foreground">
+            Ready to play? Create a room and invite your friends or join an existing game with a room code.
+        </p>
+    </div>
+</div>

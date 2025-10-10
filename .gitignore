@@ -3,5 +3,6 @@
 /PokerAppBackend/obj
 /PokerAppFrontend/bin
 /PokerAppFrontend/obj
+/PokerAppFrontend/node_modules
 .idea
 PokerApp.sln.DotSettings.user
