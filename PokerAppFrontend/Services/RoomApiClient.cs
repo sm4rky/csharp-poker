@@ -9,7 +9,7 @@ public sealed class RoomApiClient(HttpClient http) : IRoomApiClient
     private readonly HttpClient _http = http;
     private const string BaseUrl = "/api/table";
 
-    public async Task<string> CreateTableAsync(int playerCount, string name)
+    public async Task<CreateTableResponse> CreateTableAsync(int playerCount, string name)
     {
         var query = new Dictionary<string, string?>
         {
@@ -23,6 +23,6 @@ public sealed class RoomApiClient(HttpClient http) : IRoomApiClient
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<CreateTableResponse>();
-        return result?.TableCode ?? throw new InvalidOperationException("Invalid response");
+        return result ?? throw new InvalidOperationException("Invalid response");
     }
 }

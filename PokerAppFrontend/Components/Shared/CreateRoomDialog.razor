@@ -62,8 +62,8 @@
 
         try
         {
-            var tableCode = await RoomApiClient.CreateTableAsync(_form.PlayerCount, _form.Name);
-            Session.LastTableCode = tableCode;
+            var createTableResponse = await RoomApiClient.CreateTableAsync(_form.PlayerCount, _form.Name);
+            Session.LastTableCode = createTableResponse.TableCode;
             Session.LastPlayerName = _form.Name;
             Nav.NavigateTo("/game");
             DialogService.Close();
