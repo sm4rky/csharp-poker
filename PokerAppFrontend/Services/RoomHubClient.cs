@@ -31,7 +31,7 @@ public sealed class RoomHubClient(NavigationManager nav) : IRoomHubClient
         }
 
         _hub = new HubConnectionBuilder()
-            .WithUrl("https://localhost:7197/roomhub")
+            .WithUrl(_nav.ToAbsoluteUri("/roomhub"))
             .WithAutomaticReconnect()
             .Build();
 

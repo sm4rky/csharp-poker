@@ -1,0 +1,91 @@
+@using System.ComponentModel.DataAnnotations
+@using PokerAppFrontend.Services
+@using PokerAppFrontend.States
+@inject DialogService DialogService
+@inject IRoomApiClient RoomApiClient
+@inject RoomClientState Session
+@inject NavigationManager Nav
+
+<EditForm Model="@_form" OnValidSubmit="@HandleSubmit" class="space-y-6">
+    <p class="text-muted-foreground">
+        Set up your poker room and invite friends to join
+    </p>
+    
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+    
+    <RadzenStack Orientation="Orientation.Vertical" Gap="2rem" Style="width: 100%;">
+        <RadzenFormField Variant="Variant.Text" Text="Name" Style="width: 100%;">
+            <RadzenTextBox @bind-Value="_form.Name" Style="width:100%"/>
+            <ValidationMessage For="@(() => _form.Name)"/>
+        </RadzenFormField>
+
+        <div class="space-y-2">
+            <div class="flex justify-between items-center">
+                <label class="text-xs text-muted-foreground font-medium"># of players</label>
+                <span class="text-xs text-muted-foreground">@_form.PlayerCount</span>
+            </div>
+            <RadzenSlider
+                Min="2" Max="6" Step="1"
+                @bind-Value="_form.PlayerCount"
+                ShowValue="true"
+                Style="width: 100%;"/>
+            <ValidationMessage For="@(() => _form.PlayerCount)"/>
+        </div>
+
+        <RadzenStack Orientation="Orientation.Horizontal"
+                     Gap="1rem"
+                     AlignItems="AlignItems.Center"
+                     JustifyContent="JustifyContent.End">
+
+            <RadzenButton Text="Cancel"
+                          ButtonStyle="ButtonStyle.Light"
+                          Click="@(() => DialogService.Close())"/>
+
+            <RadzenButton Text="Create & Join"
+                          ButtonStyle="ButtonStyle.Primary"
+                          ButtonType="ButtonType.Submit"
+                          Disabled="@_isSubmitting"/>
+        </RadzenStack>
+
+    </RadzenStack>
+</EditForm>
+
+@code {
+    private readonly CreateRoomForm _form = new();
+    private bool _isSubmitting;
+
+    private async Task HandleSubmit()
+    {
+        if (_isSubmitting) return;
+        _isSubmitting = true;
+
+        try
+        {
+            var tableCode = await RoomApiClient.CreateTableAsync(_form.PlayerCount, _form.Name);
+            Session.LastTableCode = tableCode;
+            Session.LastPlayerName = _form.Name;
+            Nav.NavigateTo("/game");
+            DialogService.Close();
+        }
+        catch (Exception ex)
+        {
+           // Ignore 
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    public class CreateRoomForm
+    {
+        [Required(ErrorMessage = "Name is required")]
+        [StringLength(20, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 20 characters")]
+        public string Name { get; set; } = "";
+
+        [Range(2, 6, ErrorMessage = "Player count must be between 2 and 6")]
+        public int PlayerCount { get; set; } = 2;
+    }
+
+}
