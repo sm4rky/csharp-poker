@@ -5,7 +5,7 @@ namespace PokerAppBackend.Services;
 
 public interface ITableService
 {
-    string CreateTable(int playerCount, string name);
+    string CreateTable(int playerCount);
     Table Get(string tableCode);
     void JoinAsPlayer(string tableCode, int seatIndex, string name);
     void SetSeatToBot(string tableCode, int seatIndex);

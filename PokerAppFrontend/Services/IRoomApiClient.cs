@@ -4,5 +4,5 @@ namespace PokerAppFrontend.Services;
 
 public interface IRoomApiClient
 {
-    Task<CreateTableResponse> CreateTableAsync(int playerCount, string name);
+    Task<CreateTableResponse> CreateTableAsync(int playerCount);
 }

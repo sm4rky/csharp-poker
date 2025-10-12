@@ -7,23 +7,19 @@ namespace PokerAppBackend.Services;
 public sealed class TableService : ITableService
 {
     private readonly ConcurrentDictionary<string, Table> _tables = new();
-    private readonly IEvaluateHandService evaluateHandService;
+    private readonly IEvaluateHandService _evaluateHandService;
 
     public TableService(IEvaluateHandService evaluateHandService)
     {
-        this.evaluateHandService = evaluateHandService;
+        this._evaluateHandService = evaluateHandService;
     }
 
-    public string CreateTable(int playerCount, string name)
+    public string CreateTable(int playerCount)
     {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new ArgumentException("creatorName is required.", nameof(name));
-
         if (playerCount is < 2 or > 6) throw new ArgumentOutOfRangeException(nameof(playerCount));
 
         var code = Guid.NewGuid().ToString("N")[..6].ToUpper();
         var players = Enumerable.Repeat<string?>(null, playerCount).ToArray();
-        players[0] = name;
         var table = new Table(code, playerCount, players);
 
         return _tables.TryAdd(code, table)
@@ -154,7 +150,7 @@ public sealed class TableService : ITableService
         var scored = new List<(Player Player, HandValue HandValue)>(contenders.Count);
         foreach (var p in contenders)
         {
-            var hv = evaluateHandService.EvaluateHand(p.Hole, table.Community);
+            var hv = _evaluateHandService.EvaluateHand(p.Hole, table.Community);
             scored.Add((p, hv));
         }
 

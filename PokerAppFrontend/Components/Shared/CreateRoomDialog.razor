@@ -15,11 +15,6 @@
     <ValidationSummary/>
     
     <RadzenStack Orientation="Orientation.Vertical" Gap="2rem" Style="width: 100%;">
-        <RadzenFormField Variant="Variant.Text" Text="Name" Style="width: 100%;">
-            <RadzenTextBox @bind-Value="_form.Name" Style="width:100%"/>
-            <ValidationMessage For="@(() => _form.Name)"/>
-        </RadzenFormField>
-
         <div class="space-y-2">
             <div class="flex justify-between items-center">
                 <label class="text-xs text-muted-foreground font-medium"># of players</label>
@@ -62,9 +57,8 @@
 
         try
         {
-            var createTableResponse = await RoomApiClient.CreateTableAsync(_form.PlayerCount, _form.Name);
+            var createTableResponse = await RoomApiClient.CreateTableAsync(_form.PlayerCount);
             Session.LastTableCode = createTableResponse.TableCode;
-            Session.LastPlayerName = _form.Name;
             Nav.NavigateTo("/game");
             DialogService.Close();
         }
@@ -80,10 +74,6 @@
 
     public class CreateRoomForm
     {
-        [Required(ErrorMessage = "Name is required")]
-        [StringLength(20, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 20 characters")]
-        public string Name { get; set; } = "";
-
         [Range(2, 6, ErrorMessage = "Player count must be between 2 and 6")]
         public int PlayerCount { get; set; } = 2;
     }
