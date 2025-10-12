@@ -1,4 +1,5 @@
 using PokerAppFrontend.Components;
+using PokerAppFrontend.Configuration;
 using PokerAppFrontend.Services;
 using PokerAppFrontend.States;
 using Radzen;
@@ -6,10 +7,8 @@ using Radzen;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRadzenComponents();
-builder.Services.AddScoped(sp => new HttpClient
-{
-    BaseAddress = new Uri("https://localhost:7197/")
-});
+builder.Services.Configure<ApiOptions>(builder.Configuration.GetSection("Api"));
+builder.Services.AddGlobalHttpClient();
 builder.Services.AddScoped<RoomClientState>();
 builder.Services.AddScoped<IRoomApiClient, RoomApiClient>();
 builder.Services.AddScoped<IRoomHubClient, RoomHubClient>();

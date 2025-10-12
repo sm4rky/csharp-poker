@@ -1,12 +1,13 @@
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
+using Microsoft.Extensions.Options;
+using PokerAppFrontend.Configuration;
 using PokerAppFrontend.Models;
 
 namespace PokerAppFrontend.Services;
 
-public sealed class RoomHubClient(NavigationManager nav) : IRoomHubClient
+public sealed class RoomHubClient(IOptions<ApiOptions> api) : IRoomHubClient, IAsyncDisposable
 {
-    private readonly NavigationManager _nav = nav;
+    private readonly string _baseUrl = api.Value.BaseUrl.TrimEnd('/');
     private HubConnection? _hub;
 
     public bool IsConnected => _hub?.State == HubConnectionState.Connected;
@@ -31,7 +32,7 @@ public sealed class RoomHubClient(NavigationManager nav) : IRoomHubClient
         }
 
         _hub = new HubConnectionBuilder()
-            .WithUrl(_nav.ToAbsoluteUri("/roomhub"))
+            .WithUrl($"{_baseUrl}/roomhub")
             .WithAutomaticReconnect()
             .Build();
 
