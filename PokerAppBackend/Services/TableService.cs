@@ -8,6 +8,8 @@ public sealed class TableService : ITableService
 {
     private readonly ConcurrentDictionary<string, Table> _tables = new();
     private readonly IEvaluateHandService _evaluateHandService;
+    private static readonly TimeSpan DeleteTableTimer = TimeSpan.FromMinutes(30);
+    private readonly ConcurrentDictionary<string, CancellationTokenSource> _cleanupTimers = new();
 
     public TableService(IEvaluateHandService evaluateHandService)
     {
@@ -21,10 +23,11 @@ public sealed class TableService : ITableService
         var code = Guid.NewGuid().ToString("N")[..6].ToUpper();
         var players = Enumerable.Repeat<string?>(null, playerCount).ToArray();
         var table = new Table(code, playerCount, players);
-
-        return _tables.TryAdd(code, table)
-            ? code
-            : throw new InvalidOperationException("Failed to create table.");
+        if (!_tables.TryAdd(code, table))
+            throw new InvalidOperationException("Failed to create table.");
+        
+        ScheduleTableCleanup(code, DateTime.UtcNow);
+        return code;
     }
 
     public Table Get(string tableCode)
@@ -47,19 +50,19 @@ public sealed class TableService : ITableService
         if (table.IsHandInProgress())
             throw new InvalidOperationException("Cannot join in the middle of a hand. Please wait for next hand.");
 
-        var player = table.Players[seatIndex];
-
-        if (!player.IsBot)
-            throw new InvalidOperationException("You can only replace a bot.");
-
-        player.SetHuman(name);
+        table.JoinAsPlayer(seatIndex, name);
+        CancelTableScheduledCleanup(tableCode);
     }
 
     public void SetSeatToBot(string tableCode, int seatIndex)
     {
         var table = Get(tableCode);
-        var player = table.Players[seatIndex];
-        player.SetBot($"Bot {seatIndex + 1}");
+        var wasAllBots = table.AllBotsSinceUtc is not null;
+        table.SetSeatToBot(seatIndex);
+        if (!wasAllBots && table.AllBotsSinceUtc is not null)
+        {
+            ScheduleTableCleanup(tableCode, table.AllBotsSinceUtc.Value);
+        }
     }
 
     public void StartHand(string tableCode)
@@ -167,5 +170,54 @@ public sealed class TableService : ITableService
             Winners = winners,
             Scored = scored
         };
+    }
+    
+    private void ScheduleTableCleanup(string tableCode, DateTime allBotsSinceUtc)
+    {
+        CancelTableScheduledCleanup(tableCode);
+
+        var cts = new CancellationTokenSource();
+        if (!_cleanupTimers.TryAdd(tableCode, cts))
+        {
+            cts.Dispose();
+            return;
+        }
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                var delay = DeleteTableTimer - (DateTime.UtcNow - allBotsSinceUtc);
+                if (delay < TimeSpan.Zero) delay = TimeSpan.Zero;
+
+                await Task.Delay(delay, cts.Token);
+
+                if (!_tables.TryGetValue(tableCode, out var table))
+                    return;
+
+                if (table.AllBotsSinceUtc is not null &&
+                    table.AllBotsSinceUtc.Value == allBotsSinceUtc &&
+                    DateTime.UtcNow - table.AllBotsSinceUtc.Value >= DeleteTableTimer)
+                {
+                    _tables.TryRemove(tableCode, out _);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // ignore
+            }
+            finally
+            {
+                CancelTableScheduledCleanup(tableCode, disposeOnly: true);
+            }
+        });
+    }
+
+    private void CancelTableScheduledCleanup(string tableCode, bool disposeOnly = false)
+    {
+        if (!_cleanupTimers.TryRemove(tableCode, out var cts)) return;
+        if (!disposeOnly)
+            cts.Cancel();
+        cts.Dispose();
     }
 }

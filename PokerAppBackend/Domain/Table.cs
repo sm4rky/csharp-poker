@@ -15,6 +15,8 @@ public sealed class Table
     public int? ClosingSeat { get; private set; }
 
     private int? _lastRaiseSeat = null;
+    
+    public DateTime? AllBotsSinceUtc { get; private set; }
 
     public Table(string tableCode, int playerCount, IEnumerable<string?> initialNamesOrNullForBot)
     {
@@ -31,6 +33,31 @@ public sealed class Table
             .ToList();
 
         Dealer = Random.Shared.Next(0, playerCount);
+        AllBotsSinceUtc =  DateTime.UtcNow;
+    }
+
+    public void JoinAsPlayer(int seatIndex, string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            throw new ArgumentException("creatorName is required.", nameof(name));
+        
+        if (seatIndex < 0 || seatIndex >= Players.Count)
+            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
+        
+        var player = Players[seatIndex];
+        
+        if (!player.IsBot)
+            throw new InvalidOperationException("You can only replace a bot.");
+        
+        player.SetHuman(name);
+        RefreshAllBotsFlag();
+    }
+
+    public void SetSeatToBot(int seatIndex)
+    {
+        var player = Players[seatIndex];
+        player.SetBot($"Bot {seatIndex + 1}");
+        RefreshAllBotsFlag();
     }
 
     public void StartHand()
@@ -164,6 +191,11 @@ public sealed class Table
         CurrentSeatToAct = NextActiveSeat(seatIndex);
         return new FoldResult(false, -1);
     }
+    
+    public void SetAllBotsSinceUtc(DateTime? time)
+    {
+        AllBotsSinceUtc = time;
+    }
 
     private void EnsureActionTurn(int seatIndex)
     {
@@ -281,5 +313,17 @@ public sealed class Table
         }
 
         return currentSeat;
+    }
+    
+    private void RefreshAllBotsFlag()
+    {
+        if (Players.All(p => p.IsBot))
+        {
+            AllBotsSinceUtc ??= DateTime.UtcNow;
+        }
+        else
+        {
+            AllBotsSinceUtc = null;
+        }
     }
 }
