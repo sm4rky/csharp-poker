@@ -1,13 +1,44 @@
 @using PokerAppFrontend.Enums
 @using PokerAppFrontend.Models
 
-<div
-    class="relative w-full aspect-[5/2] rounded-full
-         bg-foreground
-         border-[1rem] lg:border-[2rem] border-muted-foreground
-         shadow-2xl overflow-hidden">
-    <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <Community Cards="Table.Community" Street="@ParseStreet(Table.Street)"/>
+<div class="relative w-full aspect-[5/2]">
+    <div class="absolute inset-0 rounded-full
+                border-[1rem] lg:border-[2rem] border-muted-foreground
+                shadow-2xl pointer-events-none z-20">
+    </div>
+
+    <div class="absolute inset-0 rounded-full bg-foreground overflow-hidden">
+        <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <Community Cards="Table.Community" Street="@ParseStreet(Table.Street)"/>
+        </div>
+    </div>
+
+    <div class="absolute inset-0 rounded-full z-20">
+        @{
+            var seats = BuildSeatNumberArray(Table.Players.Count);
+            var seatToPlayer = new PlayerDto?[6];
+            for (var i = 0; i < Table.Players.Count && i < seats.Length; i++)
+            {
+                var seatNumber = seats[i];
+                var player = Table.Players.FirstOrDefault(p => p.SeatIndex == i);
+                if (seatNumber is >= 0 and < 6) seatToPlayer[seatNumber] = player;
+            }
+        }
+
+        @for (var seat = 0; seat < 6; seat++)
+        {
+            var player = seatToPlayer[seat];
+            var seatIndex = player?.SeatIndex;
+
+            <PlayerSeat
+                SeatNumber="seat"
+                Player="player"
+                IsDealer="@(seatIndex == Table.Dealer)"
+                IsSmallBlind="@(seatIndex == Table.SmallBlind)"
+                IsBigBlind="@(seatIndex == Table.BigBlind)"
+                IsCurrentSeatToAct="@(seatIndex == Table.CurrentSeatToAct)"
+            />
+        }
     </div>
 </div>
 
@@ -29,5 +60,16 @@
             _ => Street.Unknown
         };
     }
+
+    private static int[] BuildSeatNumberArray(int count) => count switch
+    {
+        <= 0 => [],
+        1 => [0],
+        2 => [0, 3],
+        3 => [0, 2, 3],
+        4 => [0, 2, 3, 5],
+        5 => [0, 2, 3, 4, 5],
+        _ => [0, 1, 2, 3, 4, 5],
+    };
 
 }

@@ -13,7 +13,11 @@ public sealed class Player(int seatIndex, string name, bool isBot)
 
     internal void Receive(Card c) => _hole.Add(c);
 
-    public void Fold() => HasFolded = true;
+    public void Fold() {
+        _hole.Clear();
+        HasFolded = true;
+        _legalActions.Clear();
+    }
 
     internal void ClearHand()
     {

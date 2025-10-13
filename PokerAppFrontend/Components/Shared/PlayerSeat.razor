@@ -1,0 +1,49 @@
+@using PokerAppFrontend.Models
+@inject States.RoomClientState Session
+
+@if (Player is not null)
+{
+    <SeatInformation
+        Player="Player"
+        IsLocal="@(Session.LastSeat == Player.SeatIndex)"
+        IsFolded="@(Player.HasFolded)"
+        Class="@InfoLayout"/>
+}
+
+<SeatHole Player="Player" Class="@HoleLayout"/>
+
+@if (IsDealer)
+{
+    <SeatDealerChip Class="@ChipLayout"/>
+}
+
+@if (IsCurrentSeatToAct)
+{
+    <SeatTurnIndicator Class="@TurnLayout" Text="TURN"/>
+}
+
+@code {
+    [Parameter] public int SeatNumber { get; set; }
+    [Parameter] public PlayerDto? Player { get; set; }
+    [Parameter] public bool IsDealer { get; set; }
+    [Parameter] public bool IsSmallBlind { get; set; }
+    [Parameter] public bool IsBigBlind { get; set; }
+    [Parameter] public bool IsCurrentSeatToAct { get; set; }
+
+    private sealed record SeatLayout(string Info, string Hole, string Chip, string Turn);
+
+    private static readonly IReadOnlyDictionary<int, SeatLayout> Layouts = new Dictionary<int, SeatLayout>
+    {
+        [0] = new("top-[-15%] right-[15%]", "top-[8%] right-[20%]", "top-[15%] right-[30%]", "top-[23%] right-[20%]"),
+        [1] = new("top-[40%] right-[-15%]", "top-[40%] right-[5%]", "top-[47%] right-[15%]", "top-[55%] right-[5%]"),
+        [2] = new("bottom-[-15%] right-[15%]", "bottom-[8%] right-[20%]", "bottom-[15%] right-[30%]", "bottom-[23%] right-[20%]"),
+        [3] = new("bottom-[-15%] left-[23%]", "bottom-[8%] left-[20%]", "bottom-[15%] left-[30%]", "bottom-[23%] left-[20%]"),
+        [4] = new("top-[40%] left-[-15%]", "top-[40%] left-[5%]", "top-[47%] left-[15%]", "top-[55%] left-[5%]"),
+        [5] = new("top-[-15%] left-[23%]", "top-[8%] left-[20%]", "top-[15%] left-[30%]", "top-[23%] left-[20%]"),
+    };
+
+    private string InfoLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Info : Layouts[0].Info;
+    private string HoleLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Hole : Layouts[0].Hole;
+    private string ChipLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Chip : Layouts[0].Chip;
+    private string TurnLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Turn : Layouts[0].Turn;
+}
