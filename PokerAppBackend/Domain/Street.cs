@@ -2,7 +2,8 @@
 
 public enum Street
 {
-    Preflop,
+    Waiting,
+    PreFlop,
     Flop,
     Turn,
     River,

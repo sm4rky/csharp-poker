@@ -3,7 +3,7 @@
 public sealed class Table
 {
     public string TableCode { get; }
-    public Street Street { get; private set; } = Street.Preflop;
+    public Street Street { get; private set; } = Street.Waiting;
     public List<Player> Players { get; }
     public List<Card> Community { get; } = [];
     private Deck _deck = Deck.Standard();
@@ -74,7 +74,7 @@ public sealed class Table
             foreach (var player in Players)
                 player.Receive(_deck.Draw());
 
-        Street = Street.Preflop;
+        Street = Street.PreFlop;
         BeginActionRoundForStreet();
     }
 
@@ -86,7 +86,7 @@ public sealed class Table
 
     public void DealFlop()
     {
-        EnsureStreet(Street.Preflop);
+        EnsureStreet(Street.PreFlop);
         _deck.Burn();
         Community.AddRange(_deck.DrawMany(3));
         Street = Street.Flop;
@@ -222,7 +222,7 @@ public sealed class Table
         int firstSeatToAct;
         int closingSeat;
 
-        if (Street is Street.Preflop)
+        if (Street is Street.PreFlop)
         {
             if (Players.Count == 2)
             {
@@ -264,7 +264,7 @@ public sealed class Table
 
         switch (Street)
         {
-            case Street.Preflop:
+            case Street.PreFlop:
                 DealFlop();
                 return;
             case Street.Flop:
