@@ -1,19 +1,20 @@
 @using PokerAppFrontend.Enums
 @using PokerAppFrontend.Models
 
-<div class="relative inline-block align-middle w-12">
+<div class="relative inline-block align-middle w-8 lg:w-12">
     <div class="w-full aspect-[5/7] rounded-lg border-2 border-dashed border-accent"></div>
+
     <div class="absolute inset-0 -translate-y-1 translate-x-1">
         @if (ShowBack())
         {
-            <div
-                class="w-full h-full rounded-lg shadow-xl border-3 border-muted bg-gradient-to-br from-secondary to-secondary"></div>
+            <div class="w-full h-full rounded-lg shadow-xl border-2 border-muted
+                  bg-gradient-to-br from-secondary to-secondary"></div>
         }
         else if (Card is not null)
         {
             <div class="w-full h-full rounded-lg
-            bg-gradient-to-br from-primary to-secondary
-            text-card-foreground shadow-xl">
+                  bg-gradient-to-br from-primary to-secondary
+                  text-card-foreground shadow-xl relative select-none">
                 <div class="absolute top-1 left-1 @SuitColor">
                     <SolidSuitIcon Suit="@ParseSuit(Card.Suit)"/>
                 </div>
@@ -25,6 +26,7 @@
         }
     </div>
 </div>
+
 
 
 @code {

@@ -1,15 +1,33 @@
+@using PokerAppFrontend.Enums
 @using PokerAppFrontend.Models
 
 <div
     class="relative w-full aspect-[5/2] rounded-full
          bg-foreground
-         border-[2rem] border-muted-foreground
+         border-[1rem] lg:border-[2rem] border-muted-foreground
          shadow-2xl overflow-hidden">
     <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <Community Cards="Table.Community"/>
+        <Community Cards="Table.Community" Street="@ParseStreet(Table.Street)"/>
     </div>
 </div>
 
 @code {
     [Parameter, EditorRequired] public required TableDto Table { get; set; } = default!;
+
+    private static Street ParseStreet(string? street)
+    {
+        if (string.IsNullOrWhiteSpace(street)) return Street.Unknown;
+        var s = street.Trim().ToLowerInvariant();
+        return s switch
+        {
+            "waiting" => Street.Waiting,
+            "preflop" => Street.PreFlop,
+            "flop" => Street.Flop,
+            "turn" => Street.Turn,
+            "river" => Street.River,
+            "showdown" => Street.Showdown,
+            _ => Street.Unknown
+        };
+    }
+
 }

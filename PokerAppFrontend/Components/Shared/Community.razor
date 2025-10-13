@@ -1,15 +1,21 @@
 @using PokerAppFrontend.Models
+@using PokerAppFrontend.Enums
 
 <div class="relative">
-    <div class="flex items-center justify-between gap-2">
+    <div class="flex items-center justify-center gap-3">
         @for (var i = 0; i < 5; i++)
         {
             var card = (Cards?.Count ?? 0) > i ? Cards![i] : null;
-            <PokerCard Card="card" UsePlaceholderWhenNull="true" />
+            <PokerCard Card="card" UsePlaceholderWhenNull="true"/>
         }
+    </div>
+
+    <div class="w-full mt-2 text-sm lg:text-lg flex justify-between items-center">
+        <p class="font-bold text-white uppercase opacity-50">@Street.ToString()</p>
     </div>
 </div>
 
 @code {
     [Parameter] public IReadOnlyList<CardDto>? Cards { get; set; }
+    [Parameter] public Street Street { get; set; }
 }
