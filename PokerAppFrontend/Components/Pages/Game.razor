@@ -1,2 +1,96 @@
 @page "/game"
-<h1>Game</h1>
+@using PokerAppFrontend.Components.Shared
+@using PokerAppFrontend.Models
+@using PokerAppFrontend.Services
+@inject States.RoomClientState Session
+@inject IRoomHubClient Hub
+@inject NavigationManager Nav
+
+@implements IDisposable
+
+<div class="relative h-screen w-screen flex flex-col">
+    <div class="flex-1 overflow-x-auto overflow-y-hidden flex">
+        <div class="relative shrink-0 w-[85vw] md:w-[60vw] m-auto">
+            @if (_table is not null)
+            {
+                <GameTable Table="_table"/>
+            }
+            else
+            {
+                <div class="w-full aspect-[5/2] rounded-full
+                      bg-dark border-[30px] border-muted-foreground
+                      grid place-items-center text-white/60 text-sm">
+                    loading table…
+                </div>
+            }
+        </div>
+    </div>
+
+    <div class="border-t border-white/10 p-3">
+
+    </div>
+</div>
+
+@code {
+    private TableDto? _table;
+    private string? _error;
+    private bool _subscribed;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var tableCode = Session.LastTableCode;
+        if (string.IsNullOrWhiteSpace(tableCode))
+        {
+            Nav.NavigateTo("/", forceLoad: true);
+            return;
+        }
+
+        if (!_subscribed)
+        {
+            Hub.TableState += OnTableState;
+            Hub.Error += OnError;
+            _subscribed = true;
+        }
+
+        try
+        {
+            await Hub.JoinRoomAsync(tableCode);
+
+            if (!string.IsNullOrWhiteSpace(Session.PlayerToken))
+            {
+                try
+                {
+                    await Hub.RejoinAsync(Session.PlayerToken!);
+                }
+                catch
+                {
+                    Session.Reset();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_subscribed) return;
+        Hub.TableState -= OnTableState;
+        Hub.Error -= OnError;
+        _subscribed = false;
+    }
+
+    private void OnTableState(TableDto dto)
+    {
+        _table = dto;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnError(string msg)
+    {
+        _error = msg;
+        InvokeAsync(StateHasChanged);
+    }
+}

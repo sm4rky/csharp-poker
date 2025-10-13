@@ -1,0 +1,15 @@
+@using PokerAppFrontend.Models
+
+<div class="relative">
+    <div class="flex items-center justify-between gap-2">
+        @for (var i = 0; i < 5; i++)
+        {
+            var card = (Cards?.Count ?? 0) > i ? Cards![i] : null;
+            <PokerCard Card="card" UsePlaceholderWhenNull="true" />
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public IReadOnlyList<CardDto>? Cards { get; set; }
+}

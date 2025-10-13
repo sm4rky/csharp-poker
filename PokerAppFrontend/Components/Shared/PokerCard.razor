@@ -1,0 +1,87 @@
+@using PokerAppFrontend.Enums
+@using PokerAppFrontend.Models
+
+<div class="relative inline-block align-middle w-12">
+    <div class="w-full aspect-[5/7] rounded-lg border-2 border-dashed border-accent"></div>
+    <div class="absolute inset-0 -translate-y-1 translate-x-1">
+        @if (ShowBack())
+        {
+            <div
+                class="w-full h-full rounded-lg shadow-xl border-3 border-muted bg-gradient-to-br from-secondary to-secondary"></div>
+        }
+        else if (Card is not null)
+        {
+            <div class="w-full h-full rounded-lg
+            bg-gradient-to-br from-primary to-secondary
+            text-card-foreground shadow-xl">
+                <div class="absolute top-1 left-1 @SuitColor">
+                    <SolidSuitIcon Suit="@ParseSuit(Card.Suit)"/>
+                </div>
+
+                <div class="absolute bottom-1 right-1 text-lg font-bold leading-none text-accent">
+                    @ParseRank(Card.Rank)
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+
+@code {
+    [Parameter] public CardDto? Card { get; set; }
+    [Parameter] public bool UsePlaceholderWhenNull { get; set; } = true;
+
+    private bool ShowBack()
+    {
+        return Card is null && !UsePlaceholderWhenNull;
+    }
+
+    private static Suit ParseSuit(string? suit)
+    {
+        if (string.IsNullOrWhiteSpace(suit)) return Suit.Unknown;
+        return suit.Trim().ToLowerInvariant() switch
+        {
+            "hearts" => Suit.Hearts,
+            "diamonds" => Suit.Diamonds,
+            "clubs" => Suit.Clubs,
+            "spades" => Suit.Spades,
+            _ => Suit.Unknown
+        };
+    }
+
+    private static string ParseRank(string? rank)
+    {
+        return rank switch
+        {
+            "Two" => "2",
+            "Three" => "3",
+            "Four" => "4",
+            "Five" => "5",
+            "Six" => "6",
+            "Seven" => "7",
+            "Eight" => "8",
+            "Nine" => "9",
+            "Ten" => "10",
+            "Jack" => "J",
+            "Queen" => "Q",
+            "King" => "K",
+            "Ace" => "A",
+            _ => "U"
+        };
+    }
+
+    private string SuitColor =>
+        IsRed(ParseSuit(Card?.Suit)) ? "text-destructive" : "text-accent";
+
+    private static bool IsRed(Suit s) => s is Suit.Hearts or Suit.Diamonds;
+
+    private static SvgIcon SuitToIcon(Suit s) => s switch
+    {
+        Suit.Hearts => Lucide.Heart,
+        Suit.Diamonds => Lucide.Diamond,
+        Suit.Clubs => Lucide.Club,
+        Suit.Spades => Lucide.Spade,
+        _ => Lucide.Circle,
+    };
+
+}
