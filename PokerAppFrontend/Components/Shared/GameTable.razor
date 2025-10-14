@@ -37,6 +37,7 @@
                 IsSmallBlind="@(seatIndex == Table.SmallBlind)"
                 IsBigBlind="@(seatIndex == Table.BigBlind)"
                 IsCurrentSeatToAct="@(seatIndex == Table.CurrentSeatToAct)"
+                Street="@ParseStreet(Table.Street)"
             />
         }
     </div>

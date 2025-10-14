@@ -1,3 +1,4 @@
+@using PokerAppFrontend.Enums
 @using PokerAppFrontend.Models
 
 <div class="absolute @Class z-30 flex gap-3 items-center justify-center">
@@ -5,11 +6,15 @@
         var c1 = Player?.Hole?.Count > 0 ? Player.Hole[0] : null;
         var c2 = Player?.Hole?.Count > 1 ? Player.Hole[1] : null;
     }
-    <PokerCard Card="c1" UsePlaceholderWhenNull="@(c1 is null)"/>
-    <PokerCard Card="c2" UsePlaceholderWhenNull="@(c2 is null)"/>
+    <PokerCard Card="c1" UsePlaceholderWhenNull="!IsHandInProgress()"/>
+    <PokerCard Card="c2" UsePlaceholderWhenNull="!IsHandInProgress()"/>
 </div>
 
 @code {
     [Parameter] public PlayerDto? Player { get; set; }
+    [Parameter] public Street Street { get; set; }
     [Parameter] public string Class { get; set; } = "";
+    
+    private bool IsHandInProgress() =>
+        Street is Street.PreFlop or Street.Flop or Street.Turn or Street.River or Street.Showdown;
 }

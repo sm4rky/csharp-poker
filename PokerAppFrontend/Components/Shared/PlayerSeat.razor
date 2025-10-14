@@ -1,3 +1,4 @@
+@using PokerAppFrontend.Enums
 @using PokerAppFrontend.Models
 @inject States.RoomClientState Session
 @implements IDisposable
@@ -11,7 +12,7 @@
         Class="@InfoLayout"/>
 }
 
-<SeatHole Player="Player" Class="@HoleLayout"/>
+<SeatHole Player="Player" Class="@HoleLayout" Street="Street"/>
 
 @if (IsDealer)
 {
@@ -20,7 +21,7 @@
 
 @if (IsCurrentSeatToAct)
 {
-    <SeatTurnIndicator Class="@TurnLayout" Text="TURN"/>
+    <SeatTurnIndicator Class="@TurnLayout"/>
 }
 
 @code {
@@ -30,6 +31,7 @@
     [Parameter] public bool IsSmallBlind { get; set; }
     [Parameter] public bool IsBigBlind { get; set; }
     [Parameter] public bool IsCurrentSeatToAct { get; set; }
+    [Parameter] public Street Street { get; set; }
 
     private bool _disposed;
 
