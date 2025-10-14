@@ -6,6 +6,9 @@ public class RoomClientState
     public string? LastPlayerName { get; set; }
     public int LastSeat { get; set; } = -1;
     public string? PlayerToken { get; set; }
+    
+    public event Action? OnChange;
+    public void NotifyChange() => OnChange?.Invoke();
 
     public void Reset()
     {

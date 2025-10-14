@@ -1,0 +1,37 @@
+@using PokerAppFrontend.Models
+@inject States.RoomClientState Session
+
+@implements IDisposable
+
+@if (!IsSeated())
+{
+    <JoinAsPlayerAction Table="Table"/>
+}
+
+@code {
+    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
+
+    private bool _disposed;
+
+    private bool IsSeated()
+    {
+        return !string.IsNullOrWhiteSpace(Session.PlayerToken) && Session.LastSeat >= 0;
+    }
+
+    protected override void OnInitialized()
+    {
+        Session.OnChange += OnSessionChanged;
+    }
+
+    private void OnSessionChanged()
+    {
+        if (!_disposed) InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Session.OnChange -= OnSessionChanged;
+    }
+
+}

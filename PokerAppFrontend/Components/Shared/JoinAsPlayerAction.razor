@@ -1,0 +1,105 @@
+@using PokerAppFrontend.Models
+@using PokerAppFrontend.Services
+@inject States.RoomClientState Session
+@inject IRoomHubClient Hub
+@implements IDisposable
+
+<div class="w-full h-full flex flex-col items-center justify-center gap-3">
+    <RadzenTextBox
+        @bind-Value="_playerName"
+        Placeholder="Name is required" />
+
+    <RadzenDropDown
+        TItem="BotInfo"
+        TValue="int?"
+        Data="@_botOptions"
+        TextProperty="Display"
+        ValueProperty="SeatIndex"
+        @bind-Value="_selectedSeat"
+        Placeholder="Select seat to join" />
+
+    <RadzenButton
+        Text="Join"
+        ButtonStyle="ButtonStyle.Primary"
+        Disabled="@(_selectedSeat is null || _joining || string.IsNullOrWhiteSpace(_playerName))"
+        Click="@JoinAsPlayerAsync" />
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
+
+    private List<BotInfo> _botOptions = [];
+    private string _playerName = "";
+    private int? _selectedSeat;
+    private bool _joining;
+    private bool _disposed;
+
+    protected override void OnParametersSet()
+    {
+        if (Table is null)
+        {
+            _botOptions.Clear();
+            return;
+        }
+
+        _botOptions = Table.Players
+            .Where(p => p.IsBot)
+            .OrderBy(p => p.SeatIndex)
+            .Select(p => new BotInfo
+            {
+                SeatIndex = p.SeatIndex,
+                Name = p.Name,
+                Display = $"Seat {p.SeatIndex}: {p.Name}"
+            })
+            .ToList();
+
+        if (_selectedSeat is not null && _botOptions.All(b => b.SeatIndex != _selectedSeat.Value))
+            _selectedSeat = null;
+    }
+
+    private async Task JoinAsPlayerAsync()
+    {
+        if (_selectedSeat is null) return;
+        if (string.IsNullOrWhiteSpace(Session.LastTableCode)) return;
+        if (string.IsNullOrWhiteSpace(_playerName)) return;
+
+        try
+        {
+            _joining = true;
+
+            var seatIndex = _selectedSeat.Value;
+            var inputName = _playerName.Trim();
+            var token = await Hub.JoinAsPlayerAsync(Session.LastTableCode, seatIndex, inputName);
+
+            Session.PlayerToken = token;
+            Session.LastSeat = seatIndex;
+            Session.LastPlayerName = inputName;
+            Session.NotifyChange();
+
+            _selectedSeat = null;
+            _playerName = "";
+        }
+        catch
+        {
+            Session.Reset();
+        }
+        finally
+        {
+            _joining = false;
+            if (!_disposed)
+                await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+    }
+
+    private sealed class BotInfo
+    {
+        public int SeatIndex { get; set; }
+        public string Name { get; set; } = "";
+        public string Display { get; set; } = "";
+    }
+}

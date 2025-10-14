@@ -1,5 +1,6 @@
 @using PokerAppFrontend.Models
 @inject States.RoomClientState Session
+@implements IDisposable
 
 @if (Player is not null)
 {
@@ -29,6 +30,24 @@
     [Parameter] public bool IsSmallBlind { get; set; }
     [Parameter] public bool IsBigBlind { get; set; }
     [Parameter] public bool IsCurrentSeatToAct { get; set; }
+
+    private bool _disposed;
+
+    protected override void OnInitialized()
+    {
+        Session.OnChange += OnSessionChanged;
+    }
+
+    private void OnSessionChanged()
+    {
+        if (!_disposed) InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _disposed = true;
+        Session.OnChange -= OnSessionChanged;
+    }
 
     private sealed record SeatLayout(string Info, string Hole, string Chip, string Turn);
 
