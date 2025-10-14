@@ -22,6 +22,7 @@
         Text="Join"
         ButtonStyle="ButtonStyle.Primary"
         Disabled="@(_selectedSeat is null || _joining || string.IsNullOrWhiteSpace(_playerName))"
+        Size="ButtonSize.Large"
         Click="@JoinAsPlayerAsync" />
 </div>
 
@@ -49,7 +50,7 @@
             {
                 SeatIndex = p.SeatIndex,
                 Name = p.Name,
-                Display = $"Seat {p.SeatIndex}: {p.Name}"
+                Display = $"Seat {p.SeatIndex + 1}: {p.Name}"
             })
             .ToList();
 
