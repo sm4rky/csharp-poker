@@ -5,9 +5,11 @@
     @{
         var c1 = Player?.Hole?.Count > 0 ? Player.Hole[0] : null;
         var c2 = Player?.Hole?.Count > 1 ? Player.Hole[1] : null;
+
+        var usePlaceholder = Player is null || Player.HasFolded || !IsHandInProgress();
     }
-    <PokerCard Card="c1" UsePlaceholderWhenNull="!IsHandInProgress()"/>
-    <PokerCard Card="c2" UsePlaceholderWhenNull="!IsHandInProgress()"/>
+    <PokerCard Card="c1" UsePlaceholderWhenNull="usePlaceholder" />
+    <PokerCard Card="c2" UsePlaceholderWhenNull="usePlaceholder" />
 </div>
 
 @code {

@@ -1,0 +1,188 @@
+@using PokerAppFrontend.Models
+@using PokerAppFrontend.Services
+@inject States.RoomClientState Session
+@inject IRoomHubClient Hub
+
+<div class="w-full h-full flex flex-col items-center justify-center gap-4">
+    @if (_showRaiseControls)
+    {
+        <div class="w-full flex flex-col gap-3">
+            <div class="w-full space-y-4">
+                <div class="w-full flex justify-between items-center">
+                    <p class="text-white font-semibold">Raise Amount</p>
+                    <div class="flex items-center gap-3">
+                        <RadzenButton Icon="remove"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Disabled="@IsDisabled"
+                                      Click="@DecrementRaise"/>
+                        <p class="font-bold text-white text-2xl">@($"${_raiseAmount}")</p>
+                        <RadzenButton Icon="add"
+                                      ButtonStyle="ButtonStyle.Light"
+                                      Disabled="@IsDisabled"
+                                      Click="@IncrementRaise"/>
+                    </div>
+                </div>
+
+                <RadzenSlider Min="@MinRaise"
+                              Max="@MaxRaise"
+                              Step="@Step"
+                              TValue="int"
+                              @bind-Value="_raiseAmount"
+                              class="w-full"/>
+
+                <div class="w-full font-semibold text-sm text-white flex justify-between items-center">
+                    <p>Min: @($"${MinRaise}")</p>
+                    <p>Max: @($"${MaxRaise}")</p>
+                </div>
+            </div>
+
+            <div class="w-full flex justify-end gap-2">
+                <RadzenButton Text="Cancel"
+                              ButtonStyle="ButtonStyle.Light"
+                              Click="@(() => { _showRaiseControls = false; })"/>
+
+                <RadzenButton Text="Confirm"
+                              ButtonStyle="ButtonStyle.Danger"
+                              Disabled="@IsDisabled"
+                              Click="@RaiseConfirmAsync"/>
+            </div>
+        </div>
+    }
+    <div class="w-full flex items-center gap-3">
+        @if (HasAction("Fold"))
+        {
+            <RadzenButton Text="Fold"
+                          ButtonStyle="ButtonStyle.Light"
+                          Disabled="@IsDisabled"
+                          style="@DisabledOpacity"
+                          Size="ButtonSize.Large"
+                          Click="@FoldAsync"
+                          class="flex-1"/>
+        }
+        @if (HasAction("Check"))
+        {
+            <RadzenButton Text="Check"
+                          ButtonStyle="ButtonStyle.Light"
+                          Disabled="@IsDisabled"
+                          style="@DisabledOpacity"
+                          Size="ButtonSize.Large"
+                          Click="@CheckAsync"
+                          class="flex-1"/>
+        }
+        @if (HasAction("Call"))
+        {
+            <RadzenButton Text="Call"
+                          ButtonStyle="ButtonStyle.Light"
+                          Disabled="@IsDisabled"
+                          style="@DisabledOpacity"
+                          Size="ButtonSize.Large"
+                          Click="@CallAsync"
+                          class="flex-1"/>
+        }
+        @if (HasAction("Raise"))
+        {
+            <RadzenButton Text="Raise"
+                          ButtonStyle="ButtonStyle.Light"
+                          Disabled="@IsRaiseDisabled"
+                          style="@DisabledOpacity"
+                          Size="ButtonSize.Large"
+                          Click="@(() => _showRaiseControls = true)"
+                          class="flex-1"/>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
+    [Parameter, EditorRequired] public required PlayerDto Player { get; set; } = null!;
+
+    private const int MinRaise = 1;
+    private const int MaxRaise = 100;
+    private const string Step = "1";
+    private const int Nudge = 10;
+
+    private bool _busy;
+    private bool _showRaiseControls;
+    private int _raiseAmount = 1;
+
+    private bool IsMyTurn => Table.CurrentSeatToAct == Session.LastSeat;
+    private bool IsDisabled => _busy || !IsMyTurn;
+    private bool IsRaiseDisabled => _busy || !IsMyTurn || _showRaiseControls;
+    private string DisabledOpacity => (IsDisabled || _showRaiseControls) ? "opacity:.5" : "";
+
+    private static int Clamp(int v, int min, int max) => v < min ? min : (v > max ? max : v);
+
+    private void IncrementRaise()
+    {
+        if (IsDisabled) return;
+        _raiseAmount = Clamp(_raiseAmount + Nudge, MinRaise, MaxRaise);
+    }
+
+    private void DecrementRaise()
+    {
+        if (IsDisabled) return;
+        _raiseAmount = Clamp(_raiseAmount - Nudge, MinRaise, MaxRaise);
+    }
+
+    private bool HasAction(string action)
+        => Player?.LegalActions?.Contains(action, StringComparer.OrdinalIgnoreCase) == true;
+
+    private async Task CheckAsync()
+    {
+        if (IsDisabled || !HasAction("Check")) return;
+        try
+        {
+            _busy = true;
+            await Hub.CheckAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task CallAsync()
+    {
+        if (IsDisabled || !HasAction("Call")) return;
+        try
+        {
+            _busy = true;
+            await Hub.CallAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task FoldAsync()
+    {
+        if (IsDisabled || !HasAction("Fold")) return;
+        try
+        {
+            _busy = true;
+            await Hub.FoldAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task RaiseConfirmAsync()
+    {
+        if (IsDisabled || !HasAction("Raise")) return;
+
+        try
+        {
+            _busy = true;
+            await Hub.RaiseAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _showRaiseControls = false;
+        }
+    }
+
+}

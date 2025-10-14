@@ -13,10 +13,18 @@
     <StartHandAction @key=Table?.TableCode Table="Table"/>
 }
 
+@if (ShowInGameActions())
+{
+    <InGameActions @key=Table?.TableCode Table="Table" Player="@CurrentPlayer"/>
+}
+
 @code {
     [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
 
     private bool _disposed;
+
+    private PlayerDto? CurrentPlayer =>
+        Table?.Players?.FirstOrDefault(p => p.SeatIndex == Session.LastSeat);
 
     private bool IsSeated()
         => !string.IsNullOrWhiteSpace(Session.PlayerToken) && Session.LastSeat >= 0;
@@ -28,6 +36,13 @@
         return !string.IsNullOrWhiteSpace(Session.LastTableCode)
                && !string.IsNullOrWhiteSpace(street)
                && street.Trim().Equals("waiting", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private bool ShowInGameActions()
+    {
+        if (!IsSeated() || Table is null || CurrentPlayer is null) return false;
+        var s = Table.Street?.Trim().ToLowerInvariant();
+        return s is "preflop" or "flop" or "turn" or "river";
     }
 
     protected override void OnInitialized()
