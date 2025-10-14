@@ -19,7 +19,7 @@
     <SeatDealerChip Class="@ChipLayout"/>
 }
 
-@if (IsCurrentSeatToAct)
+@if (IsCurrentSeatToAct && Street != Street.Showdown)
 {
     <SeatTurnIndicator Class="@TurnLayout"/>
 }

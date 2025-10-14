@@ -17,12 +17,12 @@
         @{
             var seats = BuildSeatNumberArray(Table.Players.Count);
             var seatToPlayer = new PlayerDto?[6];
-            var isShowDown = CurrentStreet == Street.Showdown;
+            var isShowdown = (ShowdownResult is not null) || (CurrentStreet == Street.Showdown);
             for (var i = 0; i < Table.Players.Count && i < seats.Length; i++)
             {
                 var seatNumber = seats[i];
-                var player = isShowDown
-                    ? ShowdownResult.Hands.FirstOrDefault(h => h.Player.SeatIndex == i)?.Player
+                var player = isShowdown
+                    ? ShowdownResult?.Hands.FirstOrDefault(h => h.Player.SeatIndex == i)?.Player
                     : Table.Players.FirstOrDefault(p => p.SeatIndex == i);
                 if (seatNumber is >= 0 and < 6) seatToPlayer[seatNumber] = player;
             }
@@ -32,7 +32,9 @@
         {
             var player = seatToPlayer[seat];
             var seatIndex = player?.SeatIndex;
-            var handValue = isShowDown ? ParseHandRank(ShowdownResult.Hands[seat].HandRank) : HandRank.Unknown;
+            var handValue = ShowdownResult is not null
+                ? GetShowdownHandRankBySeatIndex(seatIndex)
+                : HandRank.Unknown;
 
             <PlayerSeat
                 SeatNumber="seat"
@@ -49,10 +51,10 @@
 </div>
 
 @code {
-    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
-    [Parameter, EditorRequired] public required ReadyInfoDto ReadyInfo { get; set; } = null!;
-    [Parameter, EditorRequired] public required ShowdownResultDto ShowdownResult { get; set; } = null!;
-    [Parameter, EditorRequired] public required DefaultWinResultDto DefaultWinResult { get; set; } = null!;
+    [Parameter] public required TableDto Table { get; set; } = null!;
+    [Parameter] public ReadyInfoDto? ReadyInfo { get; set; }
+    [Parameter] public ShowdownResultDto? ShowdownResult { get; set; }
+    [Parameter] public DefaultWinResultDto? DefaultWinResult { get; set; }
 
     private Street CurrentStreet
     {
@@ -105,5 +107,15 @@
         5 => [0, 2, 3, 4, 5],
         _ => [0, 1, 2, 3, 4, 5],
     };
+
+    private HandRank GetShowdownHandRankBySeatIndex(int? seatIndex)
+    {
+        if (seatIndex is null || ShowdownResult?.Hands is null) return HandRank.Unknown;
+
+        var hand = ShowdownResult.Hands
+            .FirstOrDefault(h => h.Player?.SeatIndex == seatIndex.Value);
+
+        return hand is null ? HandRank.Unknown : ParseHandRank(hand.HandRank);
+    }
 
 }

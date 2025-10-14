@@ -7,7 +7,7 @@ using PokerAppBackend.Services;
 
 namespace PokerAppBackend.Hubs;
 
-public class RoomHub(ITableService tableService) : Hub
+public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext) : Hub
 {
     private static readonly TimeSpan Grace = TimeSpan.FromSeconds(12);
 
@@ -101,7 +101,7 @@ public class RoomHub(ITableService tableService) : Hub
                         await Task.Delay(Grace, cancellationTokenSource.Token);
                         tableService.SetSeatToBot(playerInfo.TableCode, playerInfo.SeatIndex);
                         PlayerMap.TryRemove(connectionInfo.Token!, out _);
-                        await BroadcastTable(playerInfo.TableCode);
+                        await BroadcastTableViaHubContext(playerInfo.TableCode);
                     }
                     catch (OperationCanceledException)
                     {
@@ -234,6 +234,17 @@ public class RoomHub(ITableService tableService) : Hub
         }
     }
 
+    private async Task BroadcastTableViaHubContext(string tableCode)
+    {
+        var table = tableService.Get(tableCode);
+
+        foreach (var (connectionId, info) in ConnectionMap.ToArray())
+        {
+            if (info.TableCode != tableCode) continue;
+            await hubContext.Clients.Client(connectionId).SendAsync("TableState", table.ToTableDto(info.SeatIndex));
+        }
+    }
+
     private async Task BeginNextMatchCountdown(string tableCode)
     {
         if (PendingReadyTableMap.TryRemove(tableCode, out var oldReadyInfo))
@@ -254,7 +265,7 @@ public class RoomHub(ITableService tableService) : Hub
         }
 
         PendingReadyTableMap[tableCode] = info;
-        await BroadcastReadyState(tableCode);
+        await BroadcastReadyStateViaHubContext(tableCode);
 
         _ = Task.Run(async () =>
         {
@@ -270,8 +281,15 @@ public class RoomHub(ITableService tableService) : Hub
             //Delay time to next match ends
             try
             {
-                if (PendingReadyTableMap.TryRemove(tableCode, out _))
-                    await StartHand(tableCode);
+                if (PendingReadyTableMap.TryRemove(tableCode, out var ready))
+                {
+                    ready.CancellationTokenSource.Cancel();
+                    ready.CancellationTokenSource.Dispose();
+
+                    tableService.StartHand(tableCode);
+
+                    await BroadcastTableViaHubContext(tableCode);
+                }
             }
             catch (Exception)
             {
@@ -308,5 +326,13 @@ public class RoomHub(ITableService tableService) : Hub
         return !PendingReadyTableMap.TryGetValue(tableCode, out var readyInfo)
             ? Task.CompletedTask
             : Clients.Group($"table:{tableCode}").SendAsync("ReadyState", readyInfo.ToReadyInfoDto());
+    }
+
+    private Task BroadcastReadyStateViaHubContext(string tableCode)
+    {
+        return !PendingReadyTableMap.TryGetValue(tableCode, out var readyInfo)
+            ? Task.CompletedTask
+            : hubContext.Clients.Group($"table:{tableCode}")
+                .SendAsync("ReadyState", readyInfo.ToReadyInfoDto());
     }
 }
