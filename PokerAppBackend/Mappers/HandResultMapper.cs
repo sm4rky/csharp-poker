@@ -5,9 +5,9 @@ namespace PokerAppBackend.Mappers;
 
 public static class HandResultMapper
 {
-    public static HandResultDto ToHandResultDto(this (Player Player, HandValue HandValue) scored, int? playerSeat) => new()
+    public static HandResultDto ToHandResultDto(this (Player Player, HandValue HandValue) scored) => new()
     {
-        Player = scored.Player.ToPlayerDto(playerSeat),
+        Player = scored.Player.ToPlayerDto(null),
         HandRank = scored.HandValue.ToString(),
         Kickers =
         [

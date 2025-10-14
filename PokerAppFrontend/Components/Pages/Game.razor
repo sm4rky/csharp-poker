@@ -13,7 +13,11 @@
         <div class="relative shrink-0 w-[85vw] lg:w-[60vw] m-auto">
             @if (_table is not null)
             {
-                <GameTable Table="_table"/>
+                <GameTable
+                    Table="_table"
+                    ReadyInfo="_ready"
+                    ShowdownResult="_showdown"
+                    DefaultWinResult="_defaultWin"/>
             }
             else
             {
@@ -34,6 +38,9 @@
 
 @code {
     private TableDto? _table;
+    private ReadyInfoDto? _ready;
+    private ShowdownResultDto? _showdown;
+    private DefaultWinResultDto? _defaultWin;
     private string? _error;
     private bool _subscribed;
 
@@ -49,6 +56,9 @@
         if (!_subscribed)
         {
             Hub.TableState += OnTableState;
+            Hub.ReadyState += OnReadyState;
+            Hub.ShowdownResult += OnShowdownResult;
+            Hub.DefaultWinResult += OnDefaultWinResult;
             Hub.Error += OnError;
             _subscribed = true;
         }
@@ -79,6 +89,9 @@
     {
         if (!_subscribed) return;
         Hub.TableState -= OnTableState;
+        Hub.ReadyState -= OnReadyState;
+        Hub.ShowdownResult -= OnShowdownResult;
+        Hub.DefaultWinResult -= OnDefaultWinResult;
         Hub.Error -= OnError;
         _subscribed = false;
     }
@@ -86,6 +99,34 @@
     private void OnTableState(TableDto dto)
     {
         _table = dto;
+
+        if (string.Equals(dto.Street, "PreFlop", StringComparison.OrdinalIgnoreCase))
+        {
+            _showdown = null;
+            _defaultWin = null;
+            _ready = null;
+        }
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnReadyState(ReadyInfoDto dto)
+    {
+        _ready = dto;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnShowdownResult(ShowdownResultDto dto)
+    {
+        _showdown = dto;
+        _defaultWin = null;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnDefaultWinResult(DefaultWinResultDto dto)
+    {
+        _defaultWin = dto;
+        _showdown = null;
         InvokeAsync(StateHasChanged);
     }
 
@@ -94,4 +135,5 @@
         _error = msg;
         InvokeAsync(StateHasChanged);
     }
+
 }

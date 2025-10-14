@@ -25,7 +25,7 @@ public sealed class TableService : ITableService
         var table = new Table(code, playerCount, players);
         if (!_tables.TryAdd(code, table))
             throw new InvalidOperationException("Failed to create table.");
-        
+
         ScheduleTableCleanup(code, DateTime.UtcNow);
         return code;
     }
@@ -150,10 +150,12 @@ public sealed class TableService : ITableService
         if (contenders.Count == 0)
             return new ShowdownResult { Winners = Array.Empty<int>(), Scored = new() };
 
-        var scored = new List<(Player Player, HandValue HandValue)>(contenders.Count);
-        foreach (var p in contenders)
+        var scored = new List<(Player Player, HandValue HandValue)>(table.Players.Count);
+        foreach (var p in table.Players)
         {
-            var hv = _evaluateHandService.EvaluateHand(p.Hole, table.Community);
+            var hv = contenders.Contains(p)
+                ? _evaluateHandService.EvaluateHand(p.Hole, table.Community)
+                : new HandValue(HandRank.Unknown, 0, 0, 0, 0, 0);
             scored.Add((p, hv));
         }
 
@@ -171,7 +173,7 @@ public sealed class TableService : ITableService
             Scored = scored
         };
     }
-    
+
     private void ScheduleTableCleanup(string tableCode, DateTime allBotsSinceUtc)
     {
         CancelTableScheduledCleanup(tableCode);

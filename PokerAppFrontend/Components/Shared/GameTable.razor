@@ -17,10 +17,13 @@
         @{
             var seats = BuildSeatNumberArray(Table.Players.Count);
             var seatToPlayer = new PlayerDto?[6];
+            var isShowDown = CurrentStreet == Street.Showdown;
             for (var i = 0; i < Table.Players.Count && i < seats.Length; i++)
             {
                 var seatNumber = seats[i];
-                var player = Table.Players.FirstOrDefault(p => p.SeatIndex == i);
+                var player = isShowDown
+                    ? ShowdownResult.Hands.FirstOrDefault(h => h.Player.SeatIndex == i)?.Player
+                    : Table.Players.FirstOrDefault(p => p.SeatIndex == i);
                 if (seatNumber is >= 0 and < 6) seatToPlayer[seatNumber] = player;
             }
         }
@@ -29,6 +32,7 @@
         {
             var player = seatToPlayer[seat];
             var seatIndex = player?.SeatIndex;
+            var handValue = isShowDown ? ParseHandRank(ShowdownResult.Hands[seat].HandRank) : HandRank.Unknown;
 
             <PlayerSeat
                 SeatNumber="seat"
@@ -37,14 +41,24 @@
                 IsSmallBlind="@(seatIndex == Table.SmallBlind)"
                 IsBigBlind="@(seatIndex == Table.BigBlind)"
                 IsCurrentSeatToAct="@(seatIndex == Table.CurrentSeatToAct)"
-                Street="@ParseStreet(Table.Street)"
+                Street="@CurrentStreet"
+                HandRank="handValue"
             />
         }
     </div>
 </div>
 
 @code {
-    [Parameter, EditorRequired] public required TableDto Table { get; set; } = default!;
+    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
+    [Parameter, EditorRequired] public required ReadyInfoDto ReadyInfo { get; set; } = null!;
+    [Parameter, EditorRequired] public required ShowdownResultDto ShowdownResult { get; set; } = null!;
+    [Parameter, EditorRequired] public required DefaultWinResultDto DefaultWinResult { get; set; } = null!;
+
+    private Street CurrentStreet
+    {
+        get => ParseStreet(Table?.Street ?? "");
+        set => throw new NotImplementedException();
+    }
 
     private static Street ParseStreet(string? street)
     {
@@ -59,6 +73,25 @@
             "river" => Street.River,
             "showdown" => Street.Showdown,
             _ => Street.Unknown
+        };
+    }
+
+    private static HandRank ParseHandRank(string? handRank)
+    {
+        if (string.IsNullOrWhiteSpace(handRank)) return HandRank.Unknown;
+        var hr = handRank.Trim().ToLowerInvariant();
+        return hr switch
+        {
+            "highcard" => HandRank.HighCard,
+            "onepair" => HandRank.OnePair,
+            "twopair" => HandRank.TwoPair,
+            "threeofakind" => HandRank.ThreeOfAKind,
+            "straight" => HandRank.Straight,
+            "flush" => HandRank.Flush,
+            "fullhouse" => HandRank.FullHouse,
+            "fourofakind" => HandRank.FourOfAKind,
+            "straightflush" => HandRank.StraightFlush,
+            _ => HandRank.Unknown
         };
     }
 

@@ -1,0 +1,26 @@
+@using PokerAppFrontend.Enums
+<div class="absolute @Class z-30 text-sm lg:text-lg">
+    <p class="font-bold text-warning uppercase">TURN</p>
+    <RadzenBadge BadgeStyle="BadgeStyle.Dark" Text="Dark">@ToHandRankText</RadzenBadge>
+</div>
+
+@code {
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public HandRank HandRank { get; set; }
+
+    private string ToHandRankText => HandRank switch
+    {
+        HandRank.HighCard => "HIGH CARD",
+        HandRank.OnePair => "ONE PAIR",
+        HandRank.TwoPair => "TWO PAIR",
+        HandRank.ThreeOfAKind => "THREE OF A KIND",
+        HandRank.Straight => "STRAIGHT",
+        HandRank.Flush => "FLUSH",
+        HandRank.FullHouse => "FULL HOUSE",
+        HandRank.FourOfAKind => "FOUR OF A KIND",
+        HandRank.StraightFlush => "STRAIGHT FLUSH",
+        HandRank.Unknown => "UNKNOWN",
+        _ => throw new ArgumentOutOfRangeException()
+    };
+
+}

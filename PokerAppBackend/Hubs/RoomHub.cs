@@ -219,7 +219,7 @@ public class RoomHub(ITableService tableService) : Hub
         if (contenders <= 1) return;
 
         var result = tableService.Showdown(tableCode);
-        await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto(null));
+        await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto());
         await BeginNextMatchCountdown(tableCode);
     }
 

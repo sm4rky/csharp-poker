@@ -1,4 +1,4 @@
-namespace PokerAppBackend.Domain;
+namespace PokerAppFrontend.Enums;
 
 public enum HandRank
 {
