@@ -1,0 +1,33 @@
+@using PokerAppFrontend.Models
+@using PokerAppFrontend.Services
+@inject IRoomHubClient Hub
+
+<div class="w-full h-full flex flex-col items-center justify-center gap-3">
+    <RadzenButton
+        Text="Start Hand"
+        ButtonStyle="ButtonStyle.Primary"
+        Disabled="@_busy"
+        Click="@StartAsync"/>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
+    private bool _busy;
+
+    private async Task StartAsync()
+    {
+        try
+        {
+            _busy = true;
+            await Hub.StartHandAsync(Table.TableCode);
+        }
+        catch
+        {
+            // ignore
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

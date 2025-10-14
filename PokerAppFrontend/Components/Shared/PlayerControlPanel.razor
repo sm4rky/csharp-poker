@@ -5,7 +5,12 @@
 
 @if (!IsSeated())
 {
-    <JoinAsPlayerAction Table="Table"/>
+    <JoinAsPlayerAction @key=Table?.TableCode Table="Table"/>
+}
+
+@if (CanStart())
+{
+    <StartHandAction @key=Table?.TableCode Table="Table"/>
 }
 
 @code {
@@ -14,8 +19,15 @@
     private bool _disposed;
 
     private bool IsSeated()
+        => !string.IsNullOrWhiteSpace(Session.PlayerToken) && Session.LastSeat >= 0;
+
+    private bool CanStart()
     {
-        return !string.IsNullOrWhiteSpace(Session.PlayerToken) && Session.LastSeat >= 0;
+        if (!IsSeated()) return false;
+        var street = Table?.Street;
+        return !string.IsNullOrWhiteSpace(Session.LastTableCode)
+               && !string.IsNullOrWhiteSpace(street)
+               && street.Trim().Equals("waiting", StringComparison.OrdinalIgnoreCase);
     }
 
     protected override void OnInitialized()
