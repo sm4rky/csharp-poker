@@ -22,7 +22,8 @@
             class="flex gap-6 pb-6 relative after:content-[''] after:absolute after:left-0 after:bottom-0 after:w-full after:h-px after:bg-gradient-to-r after:from-transparent after:via-gray-300 after:to-transparent">
             <RadzenButton Text="Create Room" Click="OpenCreateRoomDialog" ButtonStyle="ButtonStyle.Primary"
                           Size="ButtonSize.Large" Class="flex-1"/>
-            <RadzenButton Text="Join Room" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Large" Class="flex-1"/>
+            <RadzenButton Text="Join Room" Click="OpenJoinRoomDialog" ButtonStyle="ButtonStyle.Secondary"
+                          Size="ButtonSize.Large" Class="flex-1"/>
         </div>
 
         <p class="pt-6 text-sm text-center text-muted-foreground">
@@ -36,6 +37,11 @@
     async Task OpenCreateRoomDialog()
     {
         await DialogService.OpenAsync<CreateRoomDialog>("Create room");
+    }
+
+    async Task OpenJoinRoomDialog()
+    {
+        await DialogService.OpenAsync<JoinRoomDialog>("Join room");
     }
 
 }

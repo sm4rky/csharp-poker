@@ -1,0 +1,77 @@
+@using System.ComponentModel.DataAnnotations
+@using PokerAppFrontend.States
+@inject DialogService DialogService
+@inject RoomClientState Session
+@inject NavigationManager Nav
+
+<EditForm Model="@_form" OnValidSubmit="@HandleSubmit" class="space-y-6">
+    <p class="text-muted-foreground">
+        Enter the room code to join the game
+    </p>
+
+    <DataAnnotationsValidator/>
+    <ValidationSummary/>
+
+    <RadzenStack Orientation="Orientation.Vertical" Gap="2rem" Style="width: 100%;">
+        <RadzenFormField Text="Room Code" Variant="Variant.Text">
+            <RadzenTextBox @bind-Value="_form.TableCode"
+                           Change="@(args => _form.TableCode = (args?.ToString() ?? "").ToUpperInvariant())"/>
+
+        </RadzenFormField>
+    </RadzenStack>
+
+    <RadzenStack Orientation="Orientation.Horizontal"
+                 Gap="1rem"
+                 AlignItems="AlignItems.Center"
+                 JustifyContent="JustifyContent.End">
+
+        <RadzenButton Text="Cancel"
+                      ButtonStyle="ButtonStyle.Light"
+                      Click="@(() => DialogService.Close())"/>
+
+        <RadzenButton Text="Join"
+                      ButtonStyle="ButtonStyle.Primary"
+                      ButtonType="ButtonType.Submit"
+                      Disabled="@_isSubmitting"/>
+    </RadzenStack>
+
+</EditForm>
+
+@code {
+    private readonly JoinRoomForm _form = new();
+    private bool _isSubmitting;
+
+    private async Task HandleSubmit()
+    {
+        if (_isSubmitting) return;
+        _isSubmitting = true;
+
+        try
+        {
+            var code = (_form.TableCode ?? string.Empty).Trim();
+            if (code.Length == 0) return;
+
+            code = code.ToUpperInvariant();
+
+            Session.LastTableCode = code;
+
+            Nav.NavigateTo("/game");
+            DialogService.Close();
+        }
+        catch (Exception ex)
+        {
+            await Console.Error.WriteLineAsync($"[JoinRoom] Failed to navigate: {ex}");
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+    public class JoinRoomForm
+    {
+        [Required(ErrorMessage = "Room code is required.")]
+        public string TableCode { get; set; } = string.Empty;
+    }
+
+}
