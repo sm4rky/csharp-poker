@@ -180,12 +180,12 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         await ShowdownIfRiverOver(playerInfo.TableCode);
     }
 
-    public async Task Raise(string token)
+    public async Task Raise(string token,int amount)
     {
         if (!PlayerMap.TryGetValue(token, out var playerInfo))
             throw new HubException("Invalid player token.");
 
-        tableService.Raise(playerInfo.TableCode, playerInfo.SeatIndex);
+        tableService.Raise(playerInfo.TableCode, playerInfo.SeatIndex,amount);
         await BroadcastTable(playerInfo.TableCode);
     }
 
@@ -219,6 +219,7 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         if (contenders <= 1) return;
 
         var result = tableService.Showdown(tableCode);
+        var lastStanding = table.GetLastStanding();
         await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto());
         await BeginNextMatchCountdown(tableCode);
     }
@@ -230,6 +231,7 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         foreach (var (connectionId, info) in ConnectionMap.ToArray())
         {
             if (info.TableCode != tableCode) continue;
+            var a = table.ToTableDto(info.SeatIndex);
             await Clients.Client(connectionId).SendAsync("TableState", table.ToTableDto(info.SeatIndex));
         }
     }

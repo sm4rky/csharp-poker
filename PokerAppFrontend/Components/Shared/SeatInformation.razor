@@ -1,39 +1,72 @@
 @using PokerAppFrontend.Models
 
 <div
-    class="absolute @Class z-30 p-1 flex items-center justify-between gap-2 @(IsFolded ? "opacity-60" : "")">
+    class="absolute @Class z-30 p-1 flex items-center justify-between gap-2 @(IsDimmed ? "opacity-60" : "")">
     <div class="relative h-12 w-12 rounded-full border-2 border-accent grid place-items-center text-accent">
         @if (Player?.IsBot == true)
         {
-            <Blazicon Svg="Lucide.Bot" />
+            <Blazicon Svg="Lucide.Bot"/>
         }
         else
         {
-            <Blazicon Svg="Lucide.UserRound" />
+            <Blazicon Svg="Lucide.UserRound"/>
         }
 
         @if (IsLocal)
         {
             <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="Info"
-                         class="absolute top-[-50%] left-[-50%]">YOU</RadzenBadge>
+                         class="absolute top-[-50%] left-[-50%]">YOU
+            </RadzenBadge>
+        }
+
+        @if (IsCurrentSeatToAct)
+        {
+            <RadzenBadge BadgeStyle="BadgeStyle.Warning" Text="Info"
+                         class="absolute bottom-[-50%]">TURN
+            </RadzenBadge>
+        }
+
+        @if (IsOut)
+        {
+            <RadzenBadge BadgeStyle="BadgeStyle.Dark"
+                         class="absolute">OUT
+            </RadzenBadge>
         }
     </div>
 
     <div class="w-[7rem] p-2 bg-background/70 shadow-sm rounded-lg">
         <div class="w-full flex items-center gap-2">
             <p class="text-xs text-muted-foreground truncate">@Player?.Name</p>
-            @if (IsFolded)
+            @if (IsFold)
             {
-                <RadzenBadge BadgeStyle="BadgeStyle.Dark" Text="Dark">FOLD</RadzenBadge>
+                <RadzenBadge BadgeStyle="BadgeStyle.Dark">FOLD</RadzenBadge>
             }
+            else if (IsWinner)
+            {
+                <RadzenBadge BadgeStyle="BadgeStyle.Secondary">WIN</RadzenBadge>
+            }
+            else if (Player?.LastestAction != "None")
+            {
+                <RadzenBadge BadgeStyle="@LastestActionBadgeStyle">@Player?.LastestAction</RadzenBadge>
+            }
+
         </div>
-        <p class="text-lg font-bold">$0.00</p>
+
+        <p class="text-lg font-bold">$@(Player?.Stack ?? 0)</p>
     </div>
 </div>
 
 @code {
     [Parameter] public PlayerDto? Player { get; set; }
     [Parameter] public bool IsLocal { get; set; }
-    [Parameter] public bool IsFolded { get; set; }
+    [Parameter] public bool IsCurrentSeatToAct { get; set; }
+    [Parameter] public bool IsPreviousSeatToAct { get; set; }
+    [Parameter] public bool IsWinner { get; set; }
     [Parameter] public string Class { get; set; } = "";
+
+    private bool IsFold => Player?.HasFolded == true;
+    private bool IsOut => Player?.IsOut == true;
+    private bool IsDimmed => IsFold || IsOut;
+
+    private BadgeStyle LastestActionBadgeStyle => IsPreviousSeatToAct ? BadgeStyle.Secondary : BadgeStyle.Base;
 }

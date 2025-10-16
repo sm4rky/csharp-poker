@@ -4,17 +4,11 @@ using ShowdownResult = PokerAppBackend.Domain.ShowdownResult;
 
 namespace PokerAppBackend.Services;
 
-public sealed class TableService : ITableService
+public sealed class TableService(IEvaluateHandService evaluateHandService) : ITableService
 {
     private readonly ConcurrentDictionary<string, Table> _tables = new();
-    private readonly IEvaluateHandService _evaluateHandService;
     private static readonly TimeSpan DeleteTableTimer = TimeSpan.FromMinutes(30);
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _cleanupTimers = new();
-
-    public TableService(IEvaluateHandService evaluateHandService)
-    {
-        this._evaluateHandService = evaluateHandService;
-    }
 
     public string CreateTable(int playerCount)
     {
@@ -97,7 +91,7 @@ public sealed class TableService : ITableService
 
         table.Check(seatIndex);
     }
-
+    
     public void Call(string tableCode, int seatIndex)
     {
         var table = Get(tableCode);
@@ -111,7 +105,7 @@ public sealed class TableService : ITableService
         table.Call(seatIndex);
     }
 
-    public void Raise(string tableCode, int seatIndex)
+    public void Raise(string tableCode, int seatIndex, int amount)
     {
         var table = Get(tableCode);
 
@@ -121,7 +115,7 @@ public sealed class TableService : ITableService
         if (seatIndex < 0 || seatIndex >= table.Players.Count)
             throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
 
-        table.Raise(seatIndex);
+        table.Raise(seatIndex, amount);
     }
 
     public FoldResult Fold(string tableCode, int seatIndex)
@@ -134,8 +128,18 @@ public sealed class TableService : ITableService
         if (seatIndex < 0 || seatIndex >= table.Players.Count)
             throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
 
-        return table.Fold(seatIndex);
+        var result = table.Fold(seatIndex);
+
+        if (result.IsMatchOver)
+        {
+            var potTotal = table.Pot;
+            table.Players[result.Winner].WinChips(potTotal);
+            foreach (var player in table.Players) player.ResetCommitmentForNewHand();
+        }
+
+        return result;
     }
+
 
     public ShowdownResult Showdown(string tableCode)
     {
@@ -144,27 +148,75 @@ public sealed class TableService : ITableService
             throw new InvalidOperationException("Cannot showdown before river.");
 
         var contenders = table.Players
-            .Where(player => !player.HasFolded)
+            .Where(player => player is { HasFolded: false, Hole.Count: 2, CommittedThisHand: > 0 })
             .ToList();
 
         if (contenders.Count == 0)
-            return new ShowdownResult { Winners = Array.Empty<int>(), Scored = new() };
+            return new ShowdownResult { Winners = [], Scored = [] };
 
-        var scored = new List<(Player Player, HandValue HandValue)>(table.Players.Count);
+        var handValueMap = new Dictionary<Player, HandValue>(table.Players.Count);
         foreach (var p in table.Players)
         {
-            var hv = contenders.Contains(p)
-                ? _evaluateHandService.EvaluateHand(p.Hole, table.Community)
+            var hv = p is { HasFolded: false, Hole.Count: 2, CommittedThisHand: > 0 }
+                ? evaluateHandService.EvaluateHand(p.Hole, table.Community)
                 : new HandValue(HandRank.Unknown, 0, 0, 0, 0, 0);
-            scored.Add((p, hv));
+
+            handValueMap[p] = hv;
         }
 
-        var bestHand = scored.Max(tuple => tuple.HandValue);
+        var sidePots = table.BuildSidePotsSnapshot();
+        foreach (var pot in sidePots)
+        {
+            var eligibleContenders = pot.EligiblePlayers.Where(p => !p.HasFolded).ToList();
+            if (eligibleContenders.Count == 0) continue;
+            if (eligibleContenders.Count == 1)
+            {
+                eligibleContenders[0].WinChips(pot.Total);
+                continue;
+            }
+
+            var potScored = eligibleContenders
+                .Select(c => (Player: c, HandValue: handValueMap[c]))
+                .ToList();
+
+            var bestPotHand = potScored.Max(tuple => tuple.HandValue);
+
+            var potWinners = potScored
+                .Where(x => x.HandValue.CompareTo(bestPotHand) == 0)
+                .Select(x => x.Player)
+                .ToList();
+
+            var baseShare = pot.Total / potWinners.Count;
+            var remainder = pot.Total % potWinners.Count;
+
+            foreach (var winner in potWinners) winner.WinChips(baseShare);
+            if (remainder <= 0) continue;
+            var nearestDealerMap = new Dictionary<int, Player>(potWinners.Count);
+            var diffBetweenDealerAndWinner = table.Players.Count - 1;
+            foreach (var w in potWinners)
+            {
+                var diff = ((w.SeatIndex - (table.Dealer + 1) + table.Players.Count) % table.Players.Count);
+                diffBetweenDealerAndWinner = Math.Min(diffBetweenDealerAndWinner, diff);
+                nearestDealerMap[diff] = w;
+            }
+
+            var playerToGetRemainder = nearestDealerMap[diffBetweenDealerAndWinner];
+            playerToGetRemainder.WinChips(remainder);
+        }
+        foreach (var player in table.Players) player.ResetCommitmentForNewHand();
+
+        var scored = table.Players
+            .Select(p => (Player: p, HandValue: handValueMap[p]))
+            .ToList();
+
+        var bestHand = scored
+            .Where(x => !x.Player.HasFolded)
+            .Max(x => x.HandValue);
 
         var winners = scored
-            .Where(tuple => tuple.HandValue.CompareTo(bestHand) == 0)
-            .Select(tuple => tuple.Player.SeatIndex)
-            .OrderBy(seatIndex => seatIndex)
+            .Where(x => !x.Player.HasFolded && x.HandValue.CompareTo(bestHand) == 0)
+            .Select(x => x.Player.SeatIndex)
+            .OrderBy(i => i)
             .ToArray();
 
         return new ShowdownResult

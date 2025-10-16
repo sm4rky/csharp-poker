@@ -1,0 +1,9 @@
+<div class="absolute @Class z-30 flex items-center gap-1">
+    <CasinoChipIcon/>
+    <p class="font-bold text-lg text-accent">$@Commitment</p>
+</div>
+
+@code {
+    [Parameter] public int Commitment { get; set; }
+    [Parameter] public string Class { get; set; } = "";
+}

@@ -9,7 +9,7 @@
 
     <div class="absolute inset-0 rounded-full bg-foreground overflow-hidden">
         <div class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            <Community Cards="Table.Community" Street="@ParseStreet(Table.Street)"/>
+            <Community Cards="Table.Community" Street="@ParseStreet(Table.Street)" TotalPot="Table.Pot"/>
         </div>
     </div>
 
@@ -17,7 +17,7 @@
         @{
             var seats = BuildSeatNumberArray(Table.Players.Count);
             var seatToPlayer = new PlayerDto?[6];
-            var isShowdown = (ShowdownResult is not null) || (CurrentStreet == Street.Showdown);
+            var isShowdown = ShowdownResult is not null;
             for (var i = 0; i < Table.Players.Count && i < seats.Length; i++)
             {
                 var seatNumber = seats[i];
@@ -43,8 +43,10 @@
                 IsSmallBlind="@(seatIndex == Table.SmallBlind)"
                 IsBigBlind="@(seatIndex == Table.BigBlind)"
                 IsCurrentSeatToAct="@(seatIndex == Table.CurrentSeatToAct)"
+                IsPreviousSeatToAct="@(seatIndex == Table.PreviousSeatToAct)"
                 Street="@CurrentStreet"
                 HandRank="handValue"
+                Winners="@GetWinners()"
             />
         }
     </div>
@@ -116,6 +118,22 @@
             .FirstOrDefault(h => h.Player?.SeatIndex == seatIndex.Value);
 
         return hand is null ? HandRank.Unknown : ParseHandRank(hand.HandRank);
+    }
+
+    private int[] GetWinners()
+    {
+        if (CurrentStreet != Street.Showdown) return [];
+        if (ShowdownResult != null)
+        {
+            return ShowdownResult.Winners;
+        }
+
+        if (DefaultWinResult != null)
+        {
+            return [DefaultWinResult.Winner];
+        }
+
+        return [];
     }
 
 }

@@ -15,7 +15,7 @@ public interface ITableService
     void DealRiver(string tableCode);
     void Check(string tableCode, int seatIndex);
     void Call(string tableCode, int seatIndex);
-    void Raise(string tableCode, int seatIndex);
+    void Raise(string tableCode, int seatIndex, int amount);
     FoldResult Fold(string tableCode, int seatIndex);
     ShowdownResult Showdown(string tableCode);
 }

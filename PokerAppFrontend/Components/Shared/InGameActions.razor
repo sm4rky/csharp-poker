@@ -3,21 +3,19 @@
 @inject States.RoomClientState Session
 @inject IRoomHubClient Hub
 
-<div class="w-full h-full flex flex-col items-center justify-center gap-4">
+<div class="w-full h-full flex flex-col items-center justify-center gap-2">
     @if (_showRaiseControls)
     {
-        <div class="w-full flex flex-col gap-3">
-            <div class="w-full space-y-4">
+        <div class="w-full border-b pb-2 flex flex-col gap-2">
+            <div class="w-full space-y-2">
                 <div class="w-full flex justify-between items-center">
-                    <p class="text-white font-semibold">Raise Amount</p>
+                    <p class="text-white font-semibold">Raise To</p>
                     <div class="flex items-center gap-3">
-                        <RadzenButton Icon="remove"
-                                      ButtonStyle="ButtonStyle.Light"
+                        <RadzenButton Icon="remove" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
                                       Disabled="@IsDisabled"
                                       Click="@DecrementRaise"/>
-                        <p class="font-bold text-white text-2xl">@($"${_raiseAmount}")</p>
-                        <RadzenButton Icon="add"
-                                      ButtonStyle="ButtonStyle.Light"
+                        <p class="font-bold text-white text-xl">@($"${_raiseAmount}")</p>
+                        <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall"
                                       Disabled="@IsDisabled"
                                       Click="@IncrementRaise"/>
                     </div>
@@ -28,66 +26,102 @@
                               Step="@Step"
                               TValue="int"
                               @bind-Value="_raiseAmount"
+                              Style="accent-color: #2c3034"
                               class="w-full"/>
 
-                <div class="w-full font-semibold text-sm text-white flex justify-between items-center">
+                <div class="w-full text-xs text-white flex justify-between items-center">
                     <p>Min: @($"${MinRaise}")</p>
                     <p>Max: @($"${MaxRaise}")</p>
+                </div>
+
+                <div class="w-full text-white text-xs">
+                    Additional from stack: <b>@($"${RaiseAdditionalCost}")</b>
                 </div>
             </div>
 
             <div class="w-full flex justify-end gap-2">
-                <RadzenButton Text="Cancel"
-                              ButtonStyle="ButtonStyle.Light"
+                <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light"
+                              Size="ButtonSize.Small"
                               Click="@(() => { _showRaiseControls = false; })"/>
-
-                <RadzenButton Text="Confirm"
-                              ButtonStyle="ButtonStyle.Danger"
+                <RadzenButton Text="Confirm" ButtonStyle="ButtonStyle.Danger"
+                              Size="ButtonSize.Small"
                               Disabled="@IsDisabled"
-                              Click="@RaiseConfirmAsync"/>
+                              Click="@OnConfirmRaise"/>
+
             </div>
         </div>
     }
-    <div class="w-full flex items-center gap-3">
+
+    <div class="w-full flex justify-center items-center gap-3">
         @if (HasAction("Fold"))
         {
-            <RadzenButton Text="Fold"
-                          ButtonStyle="ButtonStyle.Light"
-                          Disabled="@IsDisabled"
-                          style="@DisabledOpacity"
-                          Size="ButtonSize.Large"
-                          Click="@FoldAsync"
-                          class="flex-1"/>
+            <RadzenButton
+                ButtonStyle="ButtonStyle.Dark"
+                Disabled="@IsDisabled"
+                style="@DisabledOpacity"
+                Click="@FoldAsync">
+                <div class="w-full h-full flex flex-col justify-center items-center gap-1">
+                    <p class="font-bold">FOLD</p>
+                    <p class="text-xs text-accent capitalize">Give up</p>
+                </div>
+            </RadzenButton>
         }
         @if (HasAction("Check"))
         {
-            <RadzenButton Text="Check"
-                          ButtonStyle="ButtonStyle.Light"
-                          Disabled="@IsDisabled"
-                          style="@DisabledOpacity"
-                          Size="ButtonSize.Large"
-                          Click="@CheckAsync"
-                          class="flex-1"/>
+            <RadzenButton
+                ButtonStyle="ButtonStyle.Light"
+                Disabled="@IsDisabled"
+                style="@DisabledOpacity"
+                Click="@CheckAsync">
+                <div class="w-full h-full flex flex-col justify-center items-center gap-1">
+                    <p class="font-bold">CHECK</p>
+                    <p class="text-xs text-muted-foreground capitalize">No bet</p>
+                </div>
+            </RadzenButton>
         }
-        @if (HasAction("Call"))
+        @if (HasAction("Call") && CallAmount > 0)
         {
-            <RadzenButton Text="Call"
-                          ButtonStyle="ButtonStyle.Light"
-                          Disabled="@IsDisabled"
-                          style="@DisabledOpacity"
-                          Size="ButtonSize.Large"
-                          Click="@CallAsync"
-                          class="flex-1"/>
+            <RadzenButton
+                ButtonStyle="ButtonStyle.Light"
+                Disabled="@IsDisabled"
+                style="@DisabledOpacity"
+                Click="@CallAsync">
+                <div class="w-full h-full flex flex-col justify-center items-center gap-1">
+                    <p class="font-bold">CALL</p>
+                    <p class="text-xs text-muted-foreground capitalize">$@CallAmount</p>
+                </div>
+            </RadzenButton>
         }
+
         @if (HasAction("Raise"))
         {
-            <RadzenButton Text="Raise"
-                          ButtonStyle="ButtonStyle.Light"
-                          Disabled="@IsRaiseDisabled"
-                          style="@DisabledOpacity"
-                          Size="ButtonSize.Large"
-                          Click="@(() => _showRaiseControls = true)"
-                          class="flex-1"/>
+            @if (MinRaise >= MaxRaise)
+            {
+                <RadzenButton
+                    ButtonStyle="ButtonStyle.Light"
+                    Disabled="@IsRaiseDisabled"
+                    style="@DisabledOpacity"
+                    Size="ButtonSize.Large"
+                    Click="@OnAllIn">
+                    <div class="w-full h-full flex flex-col justify-center items-center gap-1">
+                        <p class="font-bold">ALL IN</p>
+                        <p class="text-xs text-muted-foreground capitalize">$@MaxRaise</p>
+                    </div>
+                </RadzenButton>
+            }
+            else
+            {
+                <RadzenButton
+                    ButtonStyle="ButtonStyle.Light"
+                    Disabled="@IsDisabled"
+                    style="@DisabledOpacity"
+                    Click="@(() => _showRaiseControls = true)">
+                    <div class="w-full h-full flex flex-col justify-center items-center gap-1">
+                        <p class="font-bold">RAISE</p>
+                        <p class="text-xs text-muted-foreground capitalize">bet more</p>
+                    </div>
+                </RadzenButton>
+            }
         }
     </div>
 </div>
@@ -96,14 +130,17 @@
     [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
     [Parameter, EditorRequired] public required PlayerDto Player { get; set; } = null!;
 
-    private const int MinRaise = 1;
-    private const int MaxRaise = 100;
-    private const string Step = "1";
-    private const int Nudge = 10;
+    private int CallAmount => Math.Max(0, Table.CurrentBetAmount - Player.CommittedThisStreet);
+
+    private int MinRaise => Math.Max(Player.CommittedThisStreet + 1, Table.CurrentBetAmount == 0 ? Table.BigBlindAmount : Table.CurrentBetAmount + Table.LastRaiseSize);
+    private int MaxRaise => Player.CommittedThisStreet + Player.Stack;
+    private static string Step => "10";
+    private int _raiseAmount;
+
+    private int RaiseAdditionalCost => Math.Max(0, _raiseAmount - Player.CommittedThisStreet);
 
     private bool _busy;
     private bool _showRaiseControls;
-    private int _raiseAmount = 1;
 
     private bool IsMyTurn => Table.CurrentSeatToAct == Session.LastSeat;
     private bool IsDisabled => _busy || !IsMyTurn;
@@ -112,16 +149,24 @@
 
     private static int Clamp(int v, int min, int max) => v < min ? min : (v > max ? max : v);
 
+    protected override void OnParametersSet()
+    {
+        var minTo = MinRaise;
+        var maxTo = MaxRaise;
+
+        _raiseAmount = !_showRaiseControls ? Clamp(minTo, minTo, maxTo) : Clamp(_raiseAmount == 0 ? minTo : _raiseAmount, minTo, maxTo);
+    }
+
     private void IncrementRaise()
     {
         if (IsDisabled) return;
-        _raiseAmount = Clamp(_raiseAmount + Nudge, MinRaise, MaxRaise);
+        _raiseAmount = Clamp(_raiseAmount + Math.Max(10, Table.LastRaiseSize), MinRaise, MaxRaise);
     }
 
     private void DecrementRaise()
     {
         if (IsDisabled) return;
-        _raiseAmount = Clamp(_raiseAmount - Nudge, MinRaise, MaxRaise);
+        _raiseAmount = Clamp(_raiseAmount - Math.Max(10, Table.LastRaiseSize), MinRaise, MaxRaise);
     }
 
     private bool HasAction(string action)
@@ -169,14 +214,14 @@
         }
     }
 
-    private async Task RaiseConfirmAsync()
+    private async Task RaiseConfirmAsync(int amount)
     {
         if (IsDisabled || !HasAction("Raise")) return;
 
         try
         {
             _busy = true;
-            await Hub.RaiseAsync();
+            await Hub.RaiseAsync(amount);
         }
         finally
         {
@@ -184,5 +229,9 @@
             _showRaiseControls = false;
         }
     }
+
+    private async Task OnConfirmRaise() => await RaiseConfirmAsync(_raiseAmount);
+
+    private async Task OnAllIn() => await RaiseConfirmAsync(MaxRaise);
 
 }

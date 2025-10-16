@@ -12,10 +12,15 @@
 
     <div class="w-full mt-2 text-sm lg:text-lg flex justify-between items-center">
         <p class="font-bold text-white uppercase opacity-50">@Street.ToString()</p>
+        @if (TotalPot > 0)
+        {
+            <p class="font-bold text-white uppercase opacity-50">TOTAL POT: <b>$@TotalPot</b></p>
+        }
     </div>
 </div>
 
 @code {
     [Parameter] public IReadOnlyList<CardDto>? Cards { get; set; }
     [Parameter] public Street Street { get; set; }
+    [Parameter] public int TotalPot { get; set; }
 }

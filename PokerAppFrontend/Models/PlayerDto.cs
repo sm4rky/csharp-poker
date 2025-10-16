@@ -8,4 +8,9 @@ public sealed class PlayerDto
     public bool HasFolded { get; init; }
     public List<CardDto> Hole { get; init; } = new();
     public List<string> LegalActions { get; init; } = new();
+    public string LastestAction { get; init; } = "";
+    public bool IsOut { get; init; }
+    public int Stack { get; init; }
+    public int CommittedThisStreet { get; init; }
+    public int CommittedThisHand { get; init; }
 }

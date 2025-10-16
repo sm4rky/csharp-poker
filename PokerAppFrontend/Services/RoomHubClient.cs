@@ -99,10 +99,10 @@ public sealed class RoomHubClient(IOptions<ApiOptions> api) : IRoomHubClient, IA
         await _hub!.InvokeAsync("Call", Token!);
     }
 
-    public async Task RaiseAsync()
+    public async Task RaiseAsync(int amount)
     {
         await EnsurePlayerAsync();
-        await _hub!.InvokeAsync("Raise", Token!);
+        await _hub!.InvokeAsync("Raise", Token!, amount);
     }
 
     public async Task FoldAsync()

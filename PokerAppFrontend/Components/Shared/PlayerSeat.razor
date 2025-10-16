@@ -8,7 +8,9 @@
     <SeatInformation
         Player="Player"
         IsLocal="@(Session.LastSeat == Player.SeatIndex)"
-        IsFolded="@(Player.HasFolded)"
+        IsCurrentSeatToAct="IsCurrentSeatToAct"
+        IsPreviousSeatToAct="IsPreviousSeatToAct"
+        IsWinner="@IsWinner"
         Class="@InfoLayout"/>
 }
 
@@ -19,14 +21,14 @@
     <SeatDealerChip Class="@ChipLayout"/>
 }
 
-@if (IsCurrentSeatToAct && Street != Street.Showdown)
+@if (Player?.CommittedThisStreet > 0)
 {
-    <SeatTurnIndicator Class="@TurnLayout"/>
+    <SeatCommitmentThisStreet Commitment="Player?.CommittedThisStreet ?? 0" Class="@CommitLayout"/>
 }
 
 @if (HandRank != HandRank.Unknown)
 {
-    <SeatHandRank Class="@HandRankLayout" HandRank="@HandRank"/>
+    <SeatHandRank Class="@HandRankLayout" HandRank="@HandRank" IsWinner="@IsWinner"/>
 }
 
 @code {
@@ -36,12 +38,16 @@
     [Parameter] public bool IsSmallBlind { get; set; }
     [Parameter] public bool IsBigBlind { get; set; }
     [Parameter] public bool IsCurrentSeatToAct { get; set; }
+    [Parameter] public bool IsPreviousSeatToAct { get; set; }
     [Parameter] public Street Street { get; set; }
     [Parameter] public HandRank HandRank { get; set; }
+    [Parameter] public int[]? Winners { get; set; }
 
     private bool _disposed;
 
-    private sealed record SeatLayout(string Info, string Hole, string Chip, string Turn, string HandRank);
+    private bool IsWinner => Winners is { Length: > 0 } && Player != null && Winners.Contains(Player.SeatIndex);
+
+    private sealed record SeatLayout(string Info, string Hole, string Chip, string Commit, string HandRank);
 
     private static readonly IReadOnlyDictionary<int, SeatLayout> Layouts = new Dictionary<int, SeatLayout>
     {
@@ -56,7 +62,7 @@
     private string InfoLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Info : Layouts[0].Info;
     private string HoleLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Hole : Layouts[0].Hole;
     private string ChipLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Chip : Layouts[0].Chip;
-    private string TurnLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Turn : Layouts[0].Turn;
+    private string CommitLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Commit : Layouts[0].Commit;
     private string HandRankLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.HandRank : Layouts[0].HandRank;
 
     protected override void OnInitialized()

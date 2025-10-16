@@ -6,17 +6,18 @@
         var c1 = Player?.Hole?.Count > 0 ? Player.Hole[0] : null;
         var c2 = Player?.Hole?.Count > 1 ? Player.Hole[1] : null;
 
-        var usePlaceholder = Player is null || Player.HasFolded || !IsHandInProgress();
+        var usePlaceholder = Player is null || Player.HasFolded || Player.IsOut || !IsHandInProgress();
     }
-    <PokerCard Card="c1" UsePlaceholderWhenNull="usePlaceholder" />
-    <PokerCard Card="c2" UsePlaceholderWhenNull="usePlaceholder" />
+    <PokerCard Card="c1" UsePlaceholderWhenNull="usePlaceholder"/>
+    <PokerCard Card="c2" UsePlaceholderWhenNull="usePlaceholder"/>
 </div>
 
 @code {
     [Parameter] public PlayerDto? Player { get; set; }
     [Parameter] public Street Street { get; set; }
     [Parameter] public string Class { get; set; } = "";
-    
+
     private bool IsHandInProgress() =>
         Street is Street.PreFlop or Street.Flop or Street.Turn or Street.River or Street.Showdown;
+
 }

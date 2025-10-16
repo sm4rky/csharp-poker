@@ -21,7 +21,7 @@ public interface IRoomHubClient : IAsyncDisposable
     Task StartHandAsync(string tableCode);
     Task CheckAsync();
     Task CallAsync();
-    Task RaiseAsync();
+    Task RaiseAsync(int amount);
     Task FoldAsync();
     Task ReadyForNextMatchAsync();
 }

@@ -7,7 +7,8 @@
 <div class="w-full h-full flex flex-col items-center justify-center gap-3">
     <RadzenTextBox
         @bind-Value="_playerName"
-        Placeholder="Name is required" />
+        Placeholder="Name is required"
+        Style="width: 100%"/>
 
     <RadzenDropDown
         TItem="BotInfo"
@@ -16,14 +17,15 @@
         TextProperty="Display"
         ValueProperty="SeatIndex"
         @bind-Value="_selectedSeat"
-        Placeholder="Select seat to join" />
+        Placeholder="Select seat to join"
+        Style="width: 100%"/>
 
     <RadzenButton
         Text="Join"
-        ButtonStyle="ButtonStyle.Primary"
+        ButtonStyle="ButtonStyle.Light"
         Disabled="@(_selectedSeat is null || _joining || string.IsNullOrWhiteSpace(_playerName))"
-        Size="ButtonSize.Large"
-        Click="@JoinAsPlayerAsync" />
+        Style="width: 100%"
+        Click="@JoinAsPlayerAsync"/>
 </div>
 
 @code {
@@ -103,4 +105,5 @@
         public string Name { get; set; } = "";
         public string Display { get; set; } = "";
     }
+
 }
