@@ -1,0 +1,30 @@
+@using PokerAppFrontend.Services
+@inject IRoomHubClient Hub
+
+<div class="w-full h-full flex flex-col items-center justify-center gap-3">
+    <RadzenButton
+        Text="Ready"
+        ButtonStyle="ButtonStyle.Light"
+        Disabled="@(_busy || _isClicked)"
+        Click="@ReadyAsync"/>
+</div>
+
+@code {
+    private bool _busy;
+    private bool _isClicked = false;
+
+    private async Task ReadyAsync()
+    {
+        try
+        {
+            _busy = true;
+            await Hub.ReadyForNextMatchAsync();
+        }
+        finally
+        {
+            _busy = false;
+            _isClicked = true;
+        }
+    }
+
+}

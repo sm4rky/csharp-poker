@@ -1,0 +1,91 @@
+@using PokerAppFrontend.Models
+
+<div
+    class="absolute top-4 right-2 w-48 z-50 px-4 py-2 rounded-lg bg-foreground shadow-lg flex flex-col items-center gap-2"
+    style="top: 10%; right: 0.5rem; width: 12rem;">
+    <p class="text-white/80 text-sm font-medium" style="color: rgb(255 255 255 / 0.8)">
+        Next match in: @CountdownText
+    </p>
+    <p class="text-white/80 text-sm font-medium" style="color: rgb(255 255 255 / 0.8)">
+        Ready: @(Ready.ReadySeats.Length)/@(Table.Players.Count)
+    </p>
+    <div class="w-full flex justify-center items-center gap-2">
+        @foreach (var p in Table.Players)
+        {
+            var isReady = Ready.ReadySeats.Contains(p.SeatIndex);
+            var color = isReady ? "hsl(var(--danger))" : "hsl(var(--accent) / 0.2)";
+
+            <div title="@p.Name"
+                 class="h-2 w-2 rounded-full @(isReady ? "bg-danger" : "bg-accent/20")"
+                 style=@($"height: 0.75rem; width: 0.75rem; background-color: {color};")>
+            </div>
+        }
+
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
+    [Parameter, EditorRequired] public required ReadyInfoDto Ready { get; set; } = null!;
+
+    [Parameter] public int StartSeconds { get; set; } = 15;
+
+    [Parameter] public EventCallback OnCountdownFinished { get; set; }
+
+    private int _secondsLeft;
+    private CancellationTokenSource? _cts;
+
+    private string CountdownText => $"{_secondsLeft / 60:00}:{_secondsLeft % 60:00}";
+
+    protected override void OnInitialized()
+    {
+        ResetAndStartCountdown();
+    }
+
+    private void ResetAndStartCountdown()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+
+        _cts = new CancellationTokenSource();
+        _secondsLeft = Math.Max(0, StartSeconds);
+        _ = RunCountdownAsync(_cts.Token);
+    }
+
+    private async Task RunCountdownAsync(CancellationToken token)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        await InvokeAsync(StateHasChanged);
+
+        while (_secondsLeft > 0 && !token.IsCancellationRequested)
+        {
+            try
+            {
+                var ticked = await timer.WaitForNextTickAsync(token);
+                if (!ticked) break;
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+
+            _secondsLeft--;
+            await InvokeAsync(StateHasChanged);
+        }
+
+        if (_secondsLeft == 0 && !token.IsCancellationRequested)
+        {
+            if (OnCountdownFinished.HasDelegate)
+            {
+                await OnCountdownFinished.InvokeAsync();
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+    }
+
+}

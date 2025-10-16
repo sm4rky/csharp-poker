@@ -18,6 +18,11 @@
     <InGameActions @key=Table?.TableCode Table="Table" Player="@CurrentPlayer"/>
 }
 
+@if (ShowReadyAction())
+{
+    <ReadyAction/>
+}
+
 @code {
     [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
 
@@ -43,6 +48,13 @@
         if (!IsSeated() || Table is null || CurrentPlayer is null) return false;
         var s = Table.Street?.Trim().ToLowerInvariant();
         return s is "preflop" or "flop" or "turn" or "river";
+    }
+
+    private bool ShowReadyAction()
+    {
+        if (!IsSeated() || Table is null || CurrentPlayer is null) return false;
+        var s = Table.Street?.Trim().ToLowerInvariant();
+        return s is "showdown";
     }
 
     protected override void OnInitialized()
