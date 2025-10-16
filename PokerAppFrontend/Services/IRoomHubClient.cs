@@ -16,6 +16,7 @@ public interface IRoomHubClient : IAsyncDisposable
 
     Task JoinRoomAsync(string tableCode);
     Task<string> JoinAsPlayerAsync(string tableCode, int seatIndex, string name);
+    Task DisconnectAsync();
     Task LeaveSeatAsync(string token);
     Task RejoinAsync(string token);
     Task StartHandAsync(string tableCode);

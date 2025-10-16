@@ -1,0 +1,17 @@
+@inject DialogService DialogService
+
+<RadzenButton Click="@OpenSettingsDialog"
+              class="flex justify-center items-center h-10 w-10 rounded-lg bg-foreground text-xs"
+              Size="ButtonSize.ExtraSmall"
+              Style="height: 2.5rem; width: 2.5rem; border-radius: 0.75rem; background-color: hsl(var(--foreground))">
+    <Blazicon Svg="Lucide.Menu"/>
+</RadzenButton>
+
+@code {
+
+    async Task OpenSettingsDialog()
+    {
+        await DialogService.OpenAsync<SettingsDialog>("Settings");
+    }
+
+}

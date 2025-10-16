@@ -1,0 +1,98 @@
+@using PokerAppFrontend.Services
+@using PokerAppFrontend.States
+@inject DialogService DialogService
+@inject IRoomHubClient Hub
+@inject RoomClientState Session
+@inject NavigationManager Nav
+@inject IJSRuntime Js
+
+<RadzenStack Orientation="Orientation.Vertical" Style="gap:1rem; font-size:.85rem; font-weight:300;">
+    <div class="w-full flex items-center gap-2">
+        <div class="flex-1 flex items-center w-full gap-2">
+            @if (_isCodeHidden)
+            {
+                <RadzenPassword @bind-Value="@Session.LastTableCode"
+                                ReadOnly="true"
+                                class="flex-1 w-full"
+                />
+            }
+            else
+            {
+                <RadzenTextBox @bind-Value="@Session.LastTableCode"
+                               ReadOnly="true"
+                               class="flex-1 w-full font-semibold"
+                />
+            }
+
+            <RadzenButton Click="@ToggleCodeVisibility"
+                          Variant="Variant.Text"
+                          ButtonStyle="ButtonStyle.Dark"
+                          Size="ButtonSize.ExtraSmall"
+                          Style="height: 2rem; width: 2rem; border-radius: .5rem; display:flex; align-items:center; justify-content:center;">
+                @if (_isCodeHidden)
+                {
+                    <Blazicon Svg="Lucide.EyeOff"/>
+                }
+                else
+                {
+                    <Blazicon Svg="Lucide.Eye"/>
+                }
+            </RadzenButton>
+        </div>
+
+        <RadzenButton Variant="Variant.Outlined" Size="ButtonSize.ExtraSmall" ButtonStyle="ButtonStyle.Dark"
+                      Style="height: 2.5rem; width: 2.5rem; border-radius: .5rem; display:flex; align-items:center; justify-content:center; color: hsl(var(--foreground));"
+                      Click="@CopyCode">
+            <Blazicon Svg="Lucide.Copy"/>
+        </RadzenButton>
+    </div>
+
+    <RadzenButton Variant="Variant.Text"
+                  ButtonStyle="ButtonStyle.Dark"
+                  Style="width:100%; display:flex; align-items:center; justify-content:flex-start; gap:.5rem; font-size:.85rem; padding:.5rem .75rem; border-radius:.5rem;"
+                  Click="@OnLeaveRoomClick">
+        <Blazicon Svg="Lucide.LogOut"/>
+        <span>Leave Room</span>
+    </RadzenButton>
+</RadzenStack>
+
+@code {
+    private bool _isCodeHidden = true;
+    private bool _isSubmitting;
+
+    private void ToggleCodeVisibility() => _isCodeHidden = !_isCodeHidden;
+
+    private async Task CopyCode()
+    {
+        try
+        {
+            await Js.InvokeVoidAsync("navigator.clipboard.writeText", Session.LastTableCode);
+        }
+        catch
+        {
+            await Js.InvokeVoidAsync("alert", "Copy failed. Please copy manually.");
+        }
+    }
+
+    private async Task OnLeaveRoomClick()
+    {
+        if (_isSubmitting) return;
+        _isSubmitting = true;
+        try
+        {
+            if (Session.PlayerToken != null && Session.LastSeat != -1)
+                await Hub.LeaveSeatAsync(Session.PlayerToken);
+
+            await Hub.DisconnectAsync();
+            Session.Reset();
+
+            Nav.NavigateTo("/");
+            DialogService.Close();
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+}

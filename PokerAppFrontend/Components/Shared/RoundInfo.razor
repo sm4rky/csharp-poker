@@ -1,0 +1,22 @@
+@using PokerAppFrontend.Models
+
+<p class="uppercase text-xl font-bold text-white opacity-50">@(Table is { Round: > 0 } ? $"ROUND {Table.Round}" : "GET READY")</p>
+<div class="flex items-center gap-4">
+    @if (Table?.Round > 0)
+    {
+        <div class="flex items-center gap-2">
+            <p class="text-white font-semibold opacity-50">Big blind:</p>
+            <div class="p-1 rounded-md bg-foreground text-white font-bold"> $@(Table.BigBlindAmount) </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <p class="text-white font-semibold opacity-50">Small blind:</p>
+            <div class="p-1 rounded-md bg-foreground text-white font-bold">
+                $@(Table.SmallBlindAmount) </div>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired] public required TableDto Table { get; set; } = null!;
+
+}

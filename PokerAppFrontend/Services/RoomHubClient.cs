@@ -67,6 +67,32 @@ public sealed class RoomHubClient(IOptions<ApiOptions> api) : IRoomHubClient, IA
         return token;
     }
 
+    public async Task DisconnectAsync()
+    {
+        if (_hub != null)
+        {
+            try
+            {
+                await _hub.StopAsync();
+            }
+            catch
+            {
+                /* ignore */
+            }
+
+            try
+            {
+                await _hub.DisposeAsync();
+            }
+            catch
+            {
+                /* ignore */
+            }
+
+            _hub = null;
+        }
+    }
+
     public async Task LeaveSeatAsync(string token)
     {
         if (_hub is null || string.IsNullOrWhiteSpace(token)) return;
