@@ -1,8 +1,6 @@
-using PokerAppBackend.Domain;
+namespace PokerAppBackend.Domain;
 
-namespace PokerAppBackend.Services.Helpers;
-
-public sealed class Analysis
+public sealed class HandAnalysis
 {
     private readonly int[] _rankCounts = new int[15];
     public int RankCount(int rank) => _rankCounts[rank];
@@ -19,16 +17,16 @@ public sealed class Analysis
     private readonly List<Card>[] _bySuit = { new(), new(), new(), new() };
     public IReadOnlyList<Card> SuitCards(int suit) => _bySuit[suit];
 
-    private Analysis()
+    private HandAnalysis()
     {
     }
 
-    public static Analysis Build(IReadOnlyList<Card> cards)
+    public static HandAnalysis Build(IReadOnlyList<Card> cards)
     {
         if (cards is null || cards.Count < 5)
             throw new ArgumentException("Total cards must be >= 5", nameof(cards));
 
-        var analysis = new Analysis();
+        var analysis = new HandAnalysis();
         foreach (var card in cards)
         {
             var rank = (int)card.Rank;

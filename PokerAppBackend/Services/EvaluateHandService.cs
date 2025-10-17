@@ -1,5 +1,4 @@
 using PokerAppBackend.Domain;
-using PokerAppBackend.Services.Helpers;
 
 namespace PokerAppBackend.Services;
 
@@ -18,7 +17,7 @@ public sealed class EvaluateHandService : IEvaluateHandService
 
         var combinedCards = hole.Concat(community).ToArray();
 
-        var analysis = Analysis.Build(combinedCards);
+        var analysis = HandAnalysis.Build(combinedCards);
 
         //Case Straight Flush
         if (TryStraightFlush(analysis, out var highestStraightFlushRank))
@@ -88,24 +87,24 @@ public sealed class EvaluateHandService : IEvaluateHandService
             highCardKickers[3], highCardKickers[4]);
     }
 
-    private static bool TryStraightFlush(Analysis analysis, out int highestRank)
+    private static bool TryStraightFlush(HandAnalysis handAnalysis, out int highestRank)
     {
         for (var suit = 0; suit < 4; suit++)
         {
-            if (analysis.SuitCount(suit) < 5) continue;
-            if (TryStraight(analysis.SuitRankMask(suit), out highestRank)) return true;
+            if (handAnalysis.SuitCount(suit) < 5) continue;
+            if (TryStraight(handAnalysis.SuitRankMask(suit), out highestRank)) return true;
         }
 
         highestRank = 0;
         return false;
     }
 
-    private static bool TryFlush(Analysis analysis, out int[] flushRanks)
+    private static bool TryFlush(HandAnalysis handAnalysis, out int[] flushRanks)
     {
         for (var suit = 0; suit <= 3; suit++)
         {
-            if (analysis.SuitCount(suit) < 5) continue;
-            var tempFlushRanks = analysis.SuitCards(suit)
+            if (handAnalysis.SuitCount(suit) < 5) continue;
+            var tempFlushRanks = handAnalysis.SuitCards(suit)
                 .OrderByDescending(card => card.Rank)
                 .Select(card => (int)card.Rank)
                 .Take(5)
@@ -152,7 +151,7 @@ public sealed class EvaluateHandService : IEvaluateHandService
     }
 
     private static (int fourOfAKindRank, List<int> threeOfAKindRanksDesc, List<int> pairRanksDesc) CollectRankGroups(
-        Analysis analysis)
+        HandAnalysis handAnalysis)
     {
         var fourOfAKindRank = 0;
         var threeOfAKindRanksDesc = new List<int>();
@@ -160,7 +159,7 @@ public sealed class EvaluateHandService : IEvaluateHandService
 
         for (var rank = 14; rank >= 2; rank--)
         {
-            var rankCount = analysis.RankCount(rank);
+            var rankCount = handAnalysis.RankCount(rank);
             switch (rankCount)
             {
                 case 4:
