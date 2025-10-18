@@ -21,7 +21,23 @@ public sealed class HandAnalysis
     {
     }
 
-    public static HandAnalysis Build(IReadOnlyList<Card> cards)
+    public static HandAnalysis BuildCombined(IReadOnlyList<Card> cards)
+    {
+        if (cards is null || cards.Count < 5 || cards.Count > 7)
+            throw new ArgumentException("Combined cards must be 5..7", nameof(cards));
+
+        return BuildInternal(cards);
+    }
+
+    public static HandAnalysis BuildBoard(IReadOnlyList<Card> board)
+    {
+        if (board is null || board.Count < 3 || board.Count > 5)
+            throw new ArgumentException("Board cards must be 3..5", nameof(board));
+
+        return BuildInternal(board);
+    }
+
+    private static HandAnalysis BuildInternal(IReadOnlyList<Card> cards)
     {
         if (cards is null || cards.Count < 5)
             throw new ArgumentException("Total cards must be >= 5", nameof(cards));

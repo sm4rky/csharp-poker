@@ -11,8 +11,8 @@ public static class BoardAdvisoryMapper
         Texture = board.Texture.ToString(),
         Paired = board.Paired,
         Monotone = board.Monotone,
-        StraightThreats = board.StraightThreats,
-        FlushThreats = board.FlushThreats,
+        StraightThreatScore = board.StraightThreatScore,
+        FlushThreatScore = board.FlushThreatScore,
         TripsPossibleOnBoard = board.TripsPossibleOnBoard
     };
 }

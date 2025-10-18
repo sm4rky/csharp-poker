@@ -17,7 +17,7 @@ public sealed class EvaluateHandService : IEvaluateHandService
 
         var combinedCards = hole.Concat(community).ToArray();
 
-        var analysis = HandAnalysis.Build(combinedCards);
+        var analysis = HandAnalysis.BuildCombined(combinedCards);
 
         //Case Straight Flush
         if (TryStraightFlush(analysis, out var highestStraightFlushRank))

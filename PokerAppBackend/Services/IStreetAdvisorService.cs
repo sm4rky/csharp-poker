@@ -4,6 +4,6 @@ namespace PokerAppBackend.Services;
 
 public interface IStreetAdvisorService
 {
-    BoardAdvisory BuildBoardAdvisory(Table table);
+    BoardAdvisory? BuildBoardAdvisory(Table table);
     PlayerAdvisory? BuildPlayerAdvisory(Table table, int seatIndex);
 }
