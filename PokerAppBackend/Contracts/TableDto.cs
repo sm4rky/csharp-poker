@@ -18,4 +18,5 @@ public sealed class TableDto
     public int BigBlindAmount { get; init; }
     public int CurrentBetAmount { get; init; }
     public int LastRaiseSize { get; init; }
+    public BoardAdvisoryDto? BoardAdvisory { get; init; }
 }

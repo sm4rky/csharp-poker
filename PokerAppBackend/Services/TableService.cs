@@ -4,7 +4,8 @@ using ShowdownResult = PokerAppBackend.Domain.ShowdownResult;
 
 namespace PokerAppBackend.Services;
 
-public sealed class TableService(IEvaluateHandService evaluateHandService) : ITableService
+public sealed class TableService(IEvaluateHandService evaluateHandService, IStreetAdvisorService streetAdvisorService)
+    : ITableService
 {
     private readonly ConcurrentDictionary<string, Table> _tables = new();
     private static readonly TimeSpan DeleteTableTimer = TimeSpan.FromMinutes(30);
@@ -61,85 +62,80 @@ public sealed class TableService(IEvaluateHandService evaluateHandService) : ITa
 
     public void StartHand(string tableCode)
     {
-        Get(tableCode).StartHand();
+        var t = Get(tableCode);
+        t.StartHand();
+        BeginActionRoundForStreet(t);
     }
 
     public void DealFlop(string tableCode)
     {
-        Get(tableCode).DealFlop();
+        var t = Get(tableCode);
+        t.DealFlop();
+        BeginActionRoundForStreet(t);
     }
 
     public void DealTurn(string tableCode)
     {
-        Get(tableCode).DealTurn();
+        var t = Get(tableCode);
+        t.DealTurn();
+        BeginActionRoundForStreet(t);
     }
 
     public void DealRiver(string tableCode)
     {
-        Get(tableCode).DealRiver();
+        var t = Get(tableCode);
+        t.DealRiver();
+        BeginActionRoundForStreet(t);
     }
 
     public void Check(string tableCode, int seatIndex)
     {
-        var table = Get(tableCode);
+        var t = Get(tableCode);
+        GuardAction(t, seatIndex);
 
-        if (table.Street is Street.Showdown)
-            throw new InvalidOperationException("Hand already ended.");
-
-        if (seatIndex < 0 || seatIndex >= table.Players.Count)
-            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
-
-        table.Check(seatIndex);
+        t.Check(seatIndex);
+        AdvanceToNextSeat(tableCode, seatIndex);
     }
-    
+
     public void Call(string tableCode, int seatIndex)
     {
-        var table = Get(tableCode);
+        var t = Get(tableCode);
+        GuardAction(t, seatIndex);
 
-        if (table.Street is Street.Showdown)
-            throw new InvalidOperationException("Hand already ended.");
-
-        if (seatIndex < 0 || seatIndex >= table.Players.Count)
-            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
-
-        table.Call(seatIndex);
+        t.Call(seatIndex);
+        AdvanceToNextSeat(tableCode, seatIndex);
     }
 
     public void Raise(string tableCode, int seatIndex, int amount)
     {
-        var table = Get(tableCode);
+        var t = Get(tableCode);
+        GuardAction(t, seatIndex);
 
-        if (table.Street is Street.Showdown)
-            throw new InvalidOperationException("Hand already ended.");
-
-        if (seatIndex < 0 || seatIndex >= table.Players.Count)
-            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
-
-        table.Raise(seatIndex, amount);
+        t.Raise(seatIndex, amount);
+        AdvanceToNextSeat(tableCode, seatIndex);
     }
 
     public FoldResult Fold(string tableCode, int seatIndex)
     {
-        var table = Get(tableCode);
-
-        if (table.Street is Street.Showdown)
+        var t = Get(tableCode);
+        if (t.Street is Street.Showdown)
             throw new InvalidOperationException("Cannot fold in this state.");
-
-        if (seatIndex < 0 || seatIndex >= table.Players.Count)
+        if (seatIndex < 0 || seatIndex >= t.Players.Count)
             throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
 
-        var result = table.Fold(seatIndex);
+        var result = t.Fold(seatIndex);
 
         if (result.IsMatchOver)
         {
-            var potTotal = table.Pot;
-            table.Players[result.Winner].WinChips(potTotal);
-            foreach (var player in table.Players) player.ResetCommitmentForNewHand();
+            var potTotal = t.Pot;
+            t.Players[result.Winner].WinChips(potTotal);
+            foreach (var player in t.Players) player.ResetCommitmentForNewHand();
+            return result;
         }
 
+        AdvanceToNextSeat(tableCode, seatIndex);
         return result;
     }
-
 
     public ShowdownResult Showdown(string tableCode)
     {
@@ -203,6 +199,7 @@ public sealed class TableService(IEvaluateHandService evaluateHandService) : ITa
             var playerToGetRemainder = nearestDealerMap[diffBetweenDealerAndWinner];
             playerToGetRemainder.WinChips(remainder);
         }
+
         foreach (var player in table.Players) player.ResetCommitmentForNewHand();
 
         var scored = table.Players
@@ -273,5 +270,152 @@ public sealed class TableService(IEvaluateHandService evaluateHandService) : ITa
         if (!disposeOnly)
             cts.Cancel();
         cts.Dispose();
+    }
+
+    private void BeginActionRoundForStreet(Table table)
+    {
+        if (!table.AnyPlayerCanActThisStreet())
+        {
+            AdvanceToNextStreet(table);
+            return;
+        }
+
+        var boardAdvisory = streetAdvisorService.BuildBoardAdvisory(table);
+        table.SetBoardAdvisory(boardAdvisory);
+        foreach (var player in table.Players)
+        {
+            if (table.Community.Count < 3 && player.Hole.Count < 2) continue;
+            var playerAdvisory = streetAdvisorService.BuildPlayerAdvisory(table, player.SeatIndex);
+            player.SetPlayerAdvisory(playerAdvisory);
+        }
+
+        table.ComputeAllPlayersLegalActions();
+
+        int firstSeatToAct;
+        int closingSeat;
+
+        if (table.Street is Street.PreFlop)
+        {
+            if (table.Players.Count(p => table.CanSeatAct(p.SeatIndex)) == 2)
+            {
+                firstSeatToAct = table.SmallBlind;
+                closingSeat = table.BigBlind;
+            }
+            else
+            {
+                firstSeatToAct = table.NextSeat(table.BigBlind);
+                closingSeat = table.Dealer;
+            }
+        }
+        else
+        {
+            if (table.Players.Count(p => table.CanSeatAct(p.SeatIndex)) == 2)
+            {
+                firstSeatToAct = table.BigBlind;
+                closingSeat = table.SmallBlind;
+            }
+            else
+            {
+                firstSeatToAct = table.SmallBlind;
+                closingSeat = table.Dealer;
+            }
+        }
+
+        firstSeatToAct = table.CanSeatAct(firstSeatToAct) ? firstSeatToAct : table.NextActingSeat(firstSeatToAct);
+        closingSeat = table.CanSeatAct(closingSeat) ? closingSeat : table.NextActingSeat(closingSeat);
+
+        table.SetPreviousSeatToAct(null);
+        table.SetCurrentSeatToAct(firstSeatToAct);
+        table.SetClosingSeat(closingSeat);
+    }
+
+    private void AdvanceToNextStreet(Table table)
+    {
+        table.ResetAtStreetStart();
+
+        switch (table.Street)
+        {
+            case Street.PreFlop:
+                table.DealFlop();
+                break;
+            case Street.Flop:
+                table.DealTurn();
+                break;
+            case Street.Turn:
+                table.DealRiver();
+                break;
+            case Street.River:
+                table.SetStreet(Street.Showdown);
+                foreach (var p in table.Players) p.SetLegalActions([]);
+                return;
+            case Street.Showdown:
+                return;
+            default:
+                throw new ArgumentOutOfRangeException();
+        }
+
+        BeginActionRoundForStreet(table);
+    }
+
+    private void AdvanceToNextSeat(string tableCode, int justActedSeat)
+    {
+        var table = Get(tableCode);
+
+        table.SetPreviousSeatToAct(table.CurrentSeatToAct);
+
+        if (table.ClosingSeat == justActedSeat)
+        {
+            AdvanceToNextStreet(table);
+            return;
+        }
+
+        var next = table.NextActingSeat(justActedSeat);
+
+        if (next == justActedSeat)
+        {
+            AdvanceToNextStreet(table);
+            return;
+        }
+
+        var hops = 0;
+        while (table.Players[next].Stack == 0 && hops < table.Players.Count)
+        {
+            table.Players[next].SetLatestAction(PlayerAction.AllIn);
+            if (next == table.ClosingSeat)
+            {
+                AdvanceToNextStreet(table);
+                return;
+            }
+
+            next = table.NextActingSeat(next);
+            hops++;
+            if (next != justActedSeat) continue;
+            AdvanceToNextStreet(table);
+            return;
+        }
+
+        if (next == justActedSeat)
+        {
+            AdvanceToNextStreet(table);
+            return;
+        }
+
+        foreach (var player in table.Players)
+        {
+            if (table.Community.Count < 3 || player.Hole.Count < 2) continue;
+            var playerAdvisory = streetAdvisorService.BuildPlayerAdvisory(table, player.SeatIndex);
+            player.SetPlayerAdvisory(playerAdvisory);
+        }
+
+        table.SetCurrentSeatToAct(next);
+        table.ComputeAllPlayersLegalActions();
+    }
+
+    private static void GuardAction(Table t, int seatIndex)
+    {
+        if (t.Street is Street.Showdown)
+            throw new InvalidOperationException("Hand already ended.");
+        if (seatIndex < 0 || seatIndex >= t.Players.Count)
+            throw new ArgumentOutOfRangeException(nameof(seatIndex), "Seat out of range.");
     }
 }

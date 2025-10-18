@@ -13,4 +13,5 @@ public sealed class PlayerDto
     public int Stack { get; init; }
     public int CommittedThisStreet { get; init; }
     public int CommittedThisHand { get; init; }
+    public PlayerAdvisoryDto? PlayerAdvisory { get; init; }
 }

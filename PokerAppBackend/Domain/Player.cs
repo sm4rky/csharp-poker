@@ -15,6 +15,7 @@ public sealed class Player(int seatIndex, string name, bool isBot)
     public int Stack { get; private set; } = 5000;
     public int CommittedThisStreet { get; private set; } = 0;
     public int CommittedThisHand { get; private set; } = 0;
+    public PlayerAdvisory? PlayerAdvisory { get; private set; }
 
     internal void Receive(Card c) => _hole.Add(c);
 
@@ -70,8 +71,10 @@ public sealed class Player(int seatIndex, string name, bool isBot)
         CommittedThisStreet = 0;
         CommittedThisHand = 0;
     }
-    
+
     internal void SetLatestAction(PlayerAction action) => LatestAction = action;
-    
+
     internal void SetOut() => IsOut = true;
+
+    internal void SetPlayerAdvisory(PlayerAdvisory? playerAdvisory) => PlayerAdvisory = playerAdvisory;
 }

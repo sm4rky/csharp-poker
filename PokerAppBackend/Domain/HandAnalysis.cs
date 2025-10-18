@@ -39,8 +39,8 @@ public sealed class HandAnalysis
 
     private static HandAnalysis BuildInternal(IReadOnlyList<Card> cards)
     {
-        if (cards is null || cards.Count < 5)
-            throw new ArgumentException("Total cards must be >= 5", nameof(cards));
+        if (cards is null || cards.Count < 3)
+            throw new ArgumentException("Total cards must be >= 3", nameof(cards));
 
         var analysis = new HandAnalysis();
         foreach (var card in cards)

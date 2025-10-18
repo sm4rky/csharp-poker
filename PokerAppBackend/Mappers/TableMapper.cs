@@ -24,6 +24,7 @@ public static class TableMapper
         SmallBlindAmount = table.CurrentBlindLevel.SmallBlindAmount,
         BigBlindAmount = table.CurrentBlindLevel.BigBlindAmount,
         CurrentBetAmount = table.CurrentBet,
-        LastRaiseSize = table.LastRaiseSize
+        LastRaiseSize = table.LastRaiseSize,
+        BoardAdvisory = table.BoardAdvisory?.ToBoardAdvisoryDto()
     };
 }

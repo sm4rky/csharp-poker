@@ -12,16 +12,11 @@ public sealed class Table
     public int Dealer { get; private set; } = 0;
     public int SmallBlind => NextActingSeat(Dealer);
     public int BigBlind => NextActingSeat(SmallBlind);
-
     public int? CurrentSeatToAct { get; private set; }
     public int? PreviousSeatToAct { get; private set; }
     public int? ClosingSeat { get; private set; }
-
     private int? _lastRaiseSeat = null;
-
     public DateTime? AllBotsSinceUtc { get; private set; }
-
-    public int Pot => Players.Sum(p => p.CommittedThisHand);
 
     private readonly BlindLevel[] _blindLevels =
     [
@@ -35,13 +30,16 @@ public sealed class Table
     ];
 
     private int _blindLevelIndex = -1;
-    public int CurrentBet { get; private set; } = 0;
-    public int LastRaiseSize { get; private set; } = 0;
-    private readonly PotManager _potManager = new PotManager();
 
     public BlindLevel CurrentBlindLevel => _blindLevelIndex >= 0
         ? _blindLevels[Math.Min(_blindLevelIndex, _blindLevels.Length - 1)]
         : _blindLevels[0];
+
+    public int Pot => Players.Sum(p => p.CommittedThisHand);
+    public int CurrentBet { get; private set; } = 0;
+    public int LastRaiseSize { get; private set; } = 0;
+    private readonly PotManager _potManager = new PotManager();
+    public BoardAdvisory? BoardAdvisory { get; private set; }
 
     public Table(string tableCode, int playerCount, IEnumerable<string?> initialNamesOrNullForBot)
     {
@@ -98,10 +96,12 @@ public sealed class Table
 
         Community.Clear();
         _potManager.ResetAll();
+        BoardAdvisory = null;
         foreach (var player in Players)
         {
             player.ClearHand();
             player.ResetCommitmentForNewHand();
+            player.SetPlayerAdvisory(null);
             if (player.Stack <= 0) player.SetOut();
         }
 
@@ -125,14 +125,6 @@ public sealed class Table
         CurrentBet = CurrentBlindLevel.BigBlindAmount;
         LastRaiseSize = bb;
         _lastRaiseSeat = bbSeat;
-
-        BeginActionRoundForStreet();
-    }
-
-    private void EnsureStreet(Street expected)
-    {
-        if (Street != expected)
-            throw new InvalidOperationException($"Invalid street transition. Expected {expected}, current {Street}.");
     }
 
     public void DealFlop()
@@ -145,7 +137,6 @@ public sealed class Table
         LastRaiseSize = CurrentBlindLevel.BigBlindAmount;
         CurrentBet = 0;
         foreach (var p in Players) p.ResetCommitmentForNewStreet();
-        BeginActionRoundForStreet();
     }
 
     public void DealTurn()
@@ -158,7 +149,6 @@ public sealed class Table
         LastRaiseSize = CurrentBlindLevel.BigBlindAmount;
         CurrentBet = 0;
         foreach (var p in Players) p.ResetCommitmentForNewStreet();
-        BeginActionRoundForStreet();
     }
 
     public void DealRiver()
@@ -171,7 +161,12 @@ public sealed class Table
         LastRaiseSize = CurrentBlindLevel.BigBlindAmount;
         CurrentBet = 0;
         foreach (var p in Players) p.ResetCommitmentForNewStreet();
-        BeginActionRoundForStreet();
+    }
+
+    private void EnsureStreet(Street expected)
+    {
+        if (Street != expected)
+            throw new InvalidOperationException($"Invalid street transition. Expected {expected}, current {Street}.");
     }
 
     public bool IsHandInProgress() =>
@@ -184,7 +179,6 @@ public sealed class Table
             throw new InvalidOperationException("Cannot check when a raise is pending. You must call or fold.");
 
         Players[seatIndex].SetLatestAction(PlayerAction.Check);
-        AdvanceToNextSeatToAct(seatIndex);
     }
 
     public void Call(int seatIndex)
@@ -200,7 +194,6 @@ public sealed class Table
 
         Bet(seatIndex, CurrentBet);
         player.SetLatestAction(player.Stack == 0 ? PlayerAction.AllIn : PlayerAction.Call);
-        AdvanceToNextSeatToAct(seatIndex);
     }
 
     public void Raise(int seatIndex, int amount)
@@ -256,7 +249,6 @@ public sealed class Table
         _lastRaiseSeat = seatIndex;
         player.SetLatestAction(isAllIn ? PlayerAction.AllIn : PlayerAction.Raise);
         ClosingSeat = PrevActingSeat(seatIndex);
-        AdvanceToNextSeatToAct(seatIndex);
     }
 
     public FoldResult Fold(int seatIndex)
@@ -279,14 +271,26 @@ public sealed class Table
             return new FoldResult(true, winner);
         }
 
-        if (seatIndex == ClosingSeat)
-        {
-            AdvanceToNextStreet();
-            return new FoldResult(false, -1);
-        }
-
-        AdvanceToNextSeatToAct(seatIndex);
         return new FoldResult(false, -1);
+    }
+
+    private void EnsureActionTurn(int seatIndex)
+    {
+        if (CurrentSeatToAct is null)
+            throw new InvalidOperationException("No action round in progress.");
+        if (Players[seatIndex].HasFolded)
+            throw new InvalidOperationException("Player already folded.");
+        if (seatIndex != CurrentSeatToAct)
+            throw new InvalidOperationException("Not your turn.");
+    }
+
+    private void Bet(int seatIndex, int amount)
+    {
+        var player = Players[seatIndex];
+        if (amount <= player.CommittedThisStreet) return;
+        var need = amount - player.CommittedThisStreet;
+        var committedChips = Players[seatIndex].CommitChips(need);
+        _potManager.Add(seatIndex, committedChips);
     }
 
     public IReadOnlyList<SidePot> BuildSidePotsSnapshot()
@@ -300,101 +304,16 @@ public sealed class Table
             .ToList();
     }
 
-    private void EnsureActionTurn(int seatIndex)
-    {
-        if (CurrentSeatToAct is null)
-            throw new InvalidOperationException("No action round in progress.");
-        if (Players[seatIndex].HasFolded)
-            throw new InvalidOperationException("Player already folded.");
-        if (seatIndex != CurrentSeatToAct)
-            throw new InvalidOperationException("Not your turn.");
-    }
-
-    private void BeginActionRoundForStreet()
-    {
-        if (!AnyPlayerCanActThisStreet())
-        {
-            AdvanceToNextStreet();
-            return;
-        }
-
-        ComputeAllPlayersLegalActions();
-
-        int firstSeatToAct;
-        int closingSeat;
-
-        if (Street is Street.PreFlop)
-        {
-            if (Players.Count(p => CanSeatAct(p.SeatIndex)) == 2)
-            {
-                firstSeatToAct = SmallBlind;
-                closingSeat = BigBlind;
-            }
-            else
-            {
-                firstSeatToAct = NextSeat(BigBlind);
-                closingSeat = Dealer;
-            }
-        }
-        else
-        {
-            if (Players.Count(p => CanSeatAct(p.SeatIndex)) == 2)
-            {
-                firstSeatToAct = BigBlind;
-                closingSeat = SmallBlind;
-            }
-            else
-            {
-                firstSeatToAct = SmallBlind;
-                closingSeat = Dealer;
-            }
-        }
-
-        firstSeatToAct = CanSeatAct(firstSeatToAct) ? firstSeatToAct : NextActingSeat(firstSeatToAct);
-        closingSeat = CanSeatAct(closingSeat) ? closingSeat : NextActingSeat(closingSeat);
-
-        PreviousSeatToAct = null;
-        CurrentSeatToAct = firstSeatToAct;
-        ClosingSeat = closingSeat;
-    }
-
-    private void AdvanceToNextStreet()
-    {
-        CurrentSeatToAct = null;
-        ClosingSeat = null;
-        _lastRaiseSeat = null;
-        foreach (var p in Players) p.SetLatestAction(PlayerAction.None);
-
-        switch (Street)
-        {
-            case Street.PreFlop:
-                DealFlop();
-                return;
-            case Street.Flop:
-                DealTurn();
-                return;
-            case Street.Turn:
-                DealRiver();
-                return;
-            case Street.River:
-                Street = Street.Showdown;
-                foreach (var p in Players) p.SetLegalActions([]);
-                return;
-            case Street.Showdown:
-                return;
-            default:
-                throw new ArgumentOutOfRangeException();
-        }
-    }
-
     private int ActivePlayerCount() => Players.Count(p => !p.HasFolded);
 
-    private bool CanSeatAct(int seatIndex) => !Players[seatIndex].HasFolded && Players[seatIndex].Stack > 0;
+    internal bool CanSeatAct(int seatIndex) => !Players[seatIndex].HasFolded && Players[seatIndex].Stack > 0;
 
-    private int NextSeat(int currentSeat) => (currentSeat + 1) % Players.Count;
+    internal bool AnyPlayerCanActThisStreet() => Players.Where(p => !p.HasFolded).Any(p => p.Stack > 0);
+
+    internal int NextSeat(int currentSeat) => (currentSeat + 1) % Players.Count;
     private int PrevSeat(int currentSeat) => (currentSeat - 1 + Players.Count) % Players.Count;
 
-    private int NextActingSeat(int currentSeat)
+    internal int NextActingSeat(int currentSeat)
     {
         var n = Players.Count;
         for (var i = 1; i < n; i++)
@@ -416,79 +335,6 @@ public sealed class Table
         }
 
         return currentSeat;
-    }
-
-    private bool AnyPlayerCanActThisStreet()
-    {
-        return Players.Where(p => !p.HasFolded).Any(p => p.Stack > 0);
-    }
-
-
-    private void AdvanceToNextSeatToAct(int justActedSeat)
-    {
-        PreviousSeatToAct = justActedSeat;
-
-        if (ClosingSeat == justActedSeat)
-        {
-            AdvanceToNextStreet();
-            return;
-        }
-
-        var next = NextActingSeat(justActedSeat);
-
-        if (next == justActedSeat)
-        {
-            AdvanceToNextStreet();
-            return;
-        }
-
-        var hops = 0;
-        while (Players[next].Stack == 0 && hops < Players.Count)
-        {
-            Players[next].SetLatestAction(PlayerAction.AllIn);
-            if (next == ClosingSeat)
-            {
-                AdvanceToNextStreet();
-                return;
-            }
-
-            next = NextActingSeat(next);
-            hops++;
-            if (next != justActedSeat) continue;
-            AdvanceToNextStreet();
-            return;
-        }
-
-        if (next == justActedSeat)
-        {
-            AdvanceToNextStreet();
-            return;
-        }
-
-        CurrentSeatToAct = next;
-        ComputeAllPlayersLegalActions();
-    }
-
-    private void RefreshAllBotsFlag()
-    {
-        if (Players.All(p => p.IsBot))
-        {
-            AllBotsSinceUtc ??= DateTime.UtcNow;
-        }
-        else
-        {
-            AllBotsSinceUtc = null;
-        }
-    }
-
-    private int Bet(int seatIndex, int amount)
-    {
-        var player = Players[seatIndex];
-        if (amount <= player.CommittedThisStreet) return 0;
-        var need = amount - player.CommittedThisStreet;
-        var committedChips = Players[seatIndex].CommitChips(need);
-        _potManager.Add(seatIndex, committedChips);
-        return committedChips;
     }
 
     private PlayerAction[] ComputeLegalActions(int seatIndex)
@@ -530,7 +376,7 @@ public sealed class Table
         return actions.ToArray();
     }
 
-    private void ComputeAllPlayersLegalActions()
+    internal void ComputeAllPlayersLegalActions()
     {
         for (var seatIndex = 0; seatIndex < Players.Count; seatIndex++)
             Players[seatIndex].SetLegalActions(ComputeLegalActions(seatIndex));
@@ -546,5 +392,35 @@ public sealed class Table
         }
 
         return only;
+    }
+
+    internal void SetStreet(Street street) => Street = street;
+
+    internal void SetPreviousSeatToAct(int? seatIndex) => PreviousSeatToAct = seatIndex;
+
+    internal void SetCurrentSeatToAct(int? seatIndex) => CurrentSeatToAct = seatIndex;
+
+    internal void SetClosingSeat(int? seatIndex) => ClosingSeat = seatIndex;
+
+    internal void ResetAtStreetStart()
+    {
+        CurrentSeatToAct = null;
+        ClosingSeat = null;
+        _lastRaiseSeat = null;
+        foreach (var p in Players) p.SetLatestAction(PlayerAction.None);
+    }
+
+    internal void SetBoardAdvisory(BoardAdvisory? boardAdvisory) => BoardAdvisory = boardAdvisory;
+
+    private void RefreshAllBotsFlag()
+    {
+        if (Players.All(p => p.IsBot))
+        {
+            AllBotsSinceUtc ??= DateTime.UtcNow;
+        }
+        else
+        {
+            AllBotsSinceUtc = null;
+        }
     }
 }
