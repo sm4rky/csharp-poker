@@ -180,12 +180,12 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         await ShowdownIfRiverOver(playerInfo.TableCode);
     }
 
-    public async Task Raise(string token,int amount)
+    public async Task Raise(string token, int amount)
     {
         if (!PlayerMap.TryGetValue(token, out var playerInfo))
             throw new HubException("Invalid player token.");
 
-        tableService.Raise(playerInfo.TableCode, playerInfo.SeatIndex,amount);
+        tableService.Raise(playerInfo.TableCode, playerInfo.SeatIndex, amount);
         await BroadcastTable(playerInfo.TableCode);
     }
 
@@ -212,14 +212,15 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
     private async Task ShowdownIfRiverOver(string tableCode)
     {
         var table = tableService.Get(tableCode);
-
         if (table.Street != Street.Showdown) return;
 
-        var contenders = table.Players.Count(p => !p.HasFolded);
+        var contenders = table.Players.Count(p =>
+            p is { HasFolded: false, IsOut: false, Hole.Count: 2, CommittedThisHand: > 0 });
         if (contenders <= 1) return;
 
         var result = tableService.Showdown(tableCode);
         var lastStanding = table.GetLastStanding();
+        await BroadcastTable(tableCode);
         await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto());
         await BeginNextMatchCountdown(tableCode);
     }
@@ -261,7 +262,8 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
             DeadlineUtc = DateTime.UtcNow.Add(ReadyWindow),
         };
 
-        foreach (var botSeat in table.Players.Where(player => player.IsBot).Select(player => player.SeatIndex))
+        foreach (var botSeat in table.Players.Where(player => player is { IsBot: true, Stack: > 0 })
+                     .Select(player => player.SeatIndex))
         {
             info.ReadySeats.TryAdd(botSeat, 0);
         }
@@ -311,7 +313,7 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         {
             await BroadcastReadyState(playerInfo.TableCode);
             var table = tableService.Get(playerInfo.TableCode);
-            if (table.Players.Count <= readyTableInfo.ReadySeats.Count)
+            if (table.Players.Count(p => p.Stack > 0) <= readyTableInfo.ReadySeats.Count)
             {
                 if (PendingReadyTableMap.TryRemove(playerInfo.TableCode, out var readyInfo))
                 {

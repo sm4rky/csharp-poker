@@ -11,24 +11,24 @@
         IsCurrentSeatToAct="IsCurrentSeatToAct"
         IsPreviousSeatToAct="IsPreviousSeatToAct"
         IsWinner="@IsWinner"
-        Class="@InfoLayout"/>
+        Style="@InfoStyle"/>
 }
 
-<SeatHole Player="Player" Class="@HoleLayout" Street="Street"/>
+<SeatHole Player="Player" Street="Street" Style="@HoleStyle"/>
 
 @if (IsDealer)
 {
-    <SeatDealerChip Class="@ChipLayout"/>
+    <SeatDealerChip Style="@ChipStyle"/>
 }
 
 @if (Player?.CommittedThisStreet > 0)
 {
-    <SeatCommitmentThisStreet Commitment="Player?.CommittedThisStreet ?? 0" Class="@CommitLayout"/>
+    <SeatCommitmentThisStreet Commitment="Player?.CommittedThisStreet ?? 0" Style="@CommitStyle"/>
 }
 
 @if (HandRank != HandRank.Unknown)
 {
-    <SeatHandRank Class="@HandRankLayout" HandRank="@HandRank" IsWinner="@IsWinner"/>
+    <SeatHandRank Style="@HandRankStyle" HandRank="@HandRank" IsWinner="@IsWinner"/>
 }
 
 @code {
@@ -47,23 +47,72 @@
 
     private bool IsWinner => Winners is { Length: > 0 } && Player != null && Winners.Contains(Player.SeatIndex);
 
-    private sealed record SeatLayout(string Info, string Hole, string Chip, string Commit, string HandRank);
+    private sealed record Pos(double? Top = null, double? Right = null, double? Bottom = null, double? Left = null)
+    {
+        public string ToStyle() => string.Join("; ", new[]
+        {
+            Top is { } t ? $"top:{t}%" : null,
+            Right is { } r ? $"right:{r}%" : null,
+            Bottom is { } b ? $"bottom:{b}%" : null,
+            Left is { } l ? $"left:{l}%" : null
+        }.Where(s => s is not null)) + ";";
+    }
+
+    private sealed record SeatLayout(Pos Info, Pos Hole, Pos Chip, Pos Commit, Pos HandRankPos);
 
     private static readonly IReadOnlyDictionary<int, SeatLayout> Layouts = new Dictionary<int, SeatLayout>
     {
-        [0] = new("top-[-15%] right-[15%]", "top-[8%] right-[20%]", "top-[15%] right-[30%]", "top-[23%] right-[20%]", "top-[23%] right-[20%]"),
-        [1] = new("top-[40%] right-[-15%]", "top-[40%] right-[5%]", "top-[47%] right-[15%]", "top-[55%] right-[5%]", "top-[55%] right-[5%]"),
-        [2] = new("bottom-[-15%] right-[15%]", "bottom-[8%] right-[20%]", "bottom-[15%] right-[30%]", "bottom-[23%] right-[20%]", "bottom-[23%] right-[20%]"),
-        [3] = new("bottom-[-15%] left-[23%]", "bottom-[8%] left-[20%]", "bottom-[15%] left-[30%]", "bottom-[23%] left-[20%]", "bottom-[23%] left-[20%]"),
-        [4] = new("top-[40%] left-[-15%]", "top-[40%] left-[5%]", "top-[47%] left-[15%]", "top-[55%] left-[5%]", "top-[55%] left-[5%]"),
-        [5] = new("top-[-15%] left-[23%]", "top-[8%] left-[20%]", "top-[15%] left-[30%]", "top-[23%] left-[20%]", "top-[23%] left-[20%]"),
+        [0] = new(
+            Info: new Pos(Top: -10, Right: 15),
+            Hole: new Pos(Top: 15, Right: 20),
+            Chip: new Pos(Top: 15, Right: 20),
+            Commit: new Pos(Top: 35, Right: 22),
+            HandRankPos: new Pos(Top: 26, Right: 21)
+        ),
+        [1] = new(
+            Info: new Pos(Top: 50, Right: -22),
+            Hole: new Pos(Top: 50, Right: 0),
+            Chip: new Pos(Top: 50, Right: 0),
+            Commit: new Pos(Top: 50, Right: 15),
+            HandRankPos: new Pos(Top: 61, Right: 1)
+        ),
+        [2] = new(
+            Info: new Pos(Top: 110, Right: 15),
+            Hole: new Pos(Top: 85, Right: 20),
+            Chip: new Pos(Top: 85, Right: 20),
+            Commit: new Pos(Top: 65, Right: 22),
+            HandRankPos: new Pos(Top: 74, Right: 21)
+        ),
+        [3] = new(
+            Info: new Pos(Top: 110, Right: 58),
+            Hole: new Pos(Top: 85, Right: 63),
+            Chip: new Pos(Top: 85, Right: 63),
+            Commit: new Pos(Top: 65, Right: 65),
+            HandRankPos: new Pos(Top: 74, Right: 64)
+        ),
+        [4] = new(
+            Info: new Pos(Top: 50, Right: 94),
+            Hole: new Pos(Top: 50, Right: 82),
+            Chip: new Pos(Top: 50, Right: 82),
+            Commit: new Pos(Top: 50, Left: 20),
+            HandRankPos: new Pos(Top: 61, Right: 83)
+        ),
+        [5] = new(
+            Info: new Pos(Top: -10, Right: 58),
+            Hole: new Pos(Top: 15, Right: 63),
+            Chip: new Pos(Top: 15, Right: 63),
+            Commit: new Pos(Top: 35, Right: 65),
+            HandRankPos: new Pos(Top: 26, Right: 63)
+        ),
     };
 
-    private string InfoLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Info : Layouts[0].Info;
-    private string HoleLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Hole : Layouts[0].Hole;
-    private string ChipLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Chip : Layouts[0].Chip;
-    private string CommitLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.Commit : Layouts[0].Commit;
-    private string HandRankLayout => Layouts.TryGetValue(SeatNumber, out var l) ? l.HandRank : Layouts[0].HandRank;
+    private SeatLayout L => Layouts.TryGetValue(SeatNumber, out var x) ? x : Layouts[0];
+
+    private string InfoStyle => L.Info.ToStyle();
+    private string HoleStyle => L.Hole.ToStyle();
+    private string ChipStyle => L.Chip.ToStyle();
+    private string CommitStyle => L.Commit.ToStyle();
+    private string HandRankStyle => L.HandRankPos.ToStyle();
 
     protected override void OnInitialized()
     {

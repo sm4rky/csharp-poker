@@ -109,9 +109,12 @@
                                style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                 Current Hand
                             </p>
+                            @{
+                                var curRank = SelectedPlayerAdvisory?.CurrentHandRank;
+                            }
                             <p class="text-lg font-semibold"
                                style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
-                                @ToHandRankText(SelectedPlayerAdvisory?.CurrentHandRank ?? "")
+                                @(string.IsNullOrWhiteSpace(curRank) ? "—" : ToHandRankText(curRank))
                             </p>
                         </div>
                         <div>
@@ -300,22 +303,30 @@
         _ => throw new ArgumentOutOfRangeException()
     };
 
-    private static string ToFlushDrawText(string flushDraw) => flushDraw.Trim().ToLowerInvariant() switch
+    private static string ToFlushDrawText(string? flushDraw)
     {
-        "none" => "None",
-        "backdoor" => "Backdoor",
-        "fourflush" => "FourFlush",
-        _ => throw new ArgumentOutOfRangeException()
-    };
+        if (string.IsNullOrWhiteSpace(flushDraw)) return "—";
+        return flushDraw.Trim().ToLowerInvariant() switch
+        {
+            "none" => "None",
+            "backdoor" => "Backdoor",
+            "fourflush" or "four-flush" => "Four Flush",
+            _ => "—"
+        };
+    }
 
-    private static string ToStraightDrawText(string straightDraw) => straightDraw.Trim().ToLowerInvariant() switch
+    private static string ToStraightDrawText(string? straightDraw)
     {
-        "none" => "None",
-        "backdoor" => "Backdoor",
-        "gutshot" => "Gutshot",
-        "oesd" => "Open-Ended Straight Draw",
-        _ => throw new ArgumentOutOfRangeException()
-    };
+        if (string.IsNullOrWhiteSpace(straightDraw)) return "—";
+        return straightDraw.Trim().ToLowerInvariant() switch
+        {
+            "none" => "None",
+            "backdoor" => "Backdoor",
+            "gutshot" => "Gutshot",
+            "oesd" => "Open-Ended Straight Draw",
+            _ => "—"
+        };
+    }
 
 }
 

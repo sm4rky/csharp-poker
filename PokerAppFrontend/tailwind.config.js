@@ -4,9 +4,13 @@ module.exports = {
         "./**/*.html",
         "./**/*.cshtml",
         "./Components/**/*.{razor,cshtml,html}",
+        "./Components/Shared/**/*.{razor,cshtml,html}",
         "./Pages/**/*.{razor,cshtml,html}",
         "./Shared/**/*.{razor,cshtml,html}",
         "./**/*.js",
+        "!./node_modules/**/*",
+        "!./bin/**/*",
+        "!./obj/**/*"
     ],
     theme: {
         extend: {

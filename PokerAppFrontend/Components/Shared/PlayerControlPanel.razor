@@ -54,7 +54,7 @@
     {
         if (!IsSeated() || Table is null || CurrentPlayer is null) return false;
         var s = Table.Street?.Trim().ToLowerInvariant();
-        return s is "showdown";
+        return s is "showdown" && CurrentPlayer.Stack > 0;
     }
 
     protected override void OnInitialized()

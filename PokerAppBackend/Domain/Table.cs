@@ -109,7 +109,7 @@ public sealed class Table
         _deck.Shuffle();
 
         for (var i = 0; i < 2; i++)
-            foreach (var player in Players.Where(player => !player.IsOut))
+            foreach (var player in Players.Where(player => player is { IsOut: false, Stack: > 0 }))
                 player.Receive(_deck.Draw());
 
         Street = Street.PreFlop;
@@ -260,18 +260,16 @@ public sealed class Table
 
         player.Fold();
 
-        if (ActivePlayerCount() <= 1)
-        {
-            Street = Street.Showdown;
-            CurrentSeatToAct = null;
-            ClosingSeat = null;
-            _lastRaiseSeat = null;
-            foreach (var p in Players) p.SetLegalActions([]);
-            var winner = Players.First(p => !p.HasFolded).SeatIndex;
-            return new FoldResult(true, winner);
-        }
-
-        return new FoldResult(false, -1);
+        if (ActivePlayerCountEligible() > 1) return new FoldResult(false, -1);
+        Street = Street.Showdown;
+        CurrentSeatToAct = null;
+        ClosingSeat = null;
+        _lastRaiseSeat = null;
+        foreach (var p in Players) p.SetLegalActions([]);
+        var winner = Players
+            .First(p => p is { HasFolded: false, IsOut: false, Hole.Count: 2 })
+            .SeatIndex;
+        return new FoldResult(true, winner);
     }
 
     private void EnsureActionTurn(int seatIndex)
@@ -304,11 +302,24 @@ public sealed class Table
             .ToList();
     }
 
-    private int ActivePlayerCount() => Players.Count(p => !p.HasFolded);
+    private int ActivePlayerCountEligible() =>
+        Players.Count(p => p is { HasFolded: false, IsOut: false, Hole.Count: 2 });
 
     internal bool CanSeatAct(int seatIndex) => !Players[seatIndex].HasFolded && Players[seatIndex].Stack > 0;
 
-    internal bool AnyPlayerCanActThisStreet() => Players.Where(p => !p.HasFolded).Any(p => p.Stack > 0);
+    internal bool OnlyOneOrLessPlayerCanActThisStreet()
+    {
+        var count = 0;
+        foreach (var p in Players.Where(p => !p.HasFolded && p.Stack > 0))
+        {
+            count++;
+            if (count > 1)
+                return false;
+        }
+
+        return true;
+    }
+
 
     internal int NextSeat(int currentSeat) => (currentSeat + 1) % Players.Count;
     private int PrevSeat(int currentSeat) => (currentSeat - 1 + Players.Count) % Players.Count;

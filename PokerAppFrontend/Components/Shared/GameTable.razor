@@ -34,7 +34,9 @@
             var seatIndex = player?.SeatIndex;
             var handValue = ShowdownResult is not null
                 ? GetShowdownHandRankBySeatIndex(seatIndex)
-                : HandRank.Unknown;
+                : (player?.PlayerAdvisory is not null
+                    ? ParseHandRank(player.PlayerAdvisory.CurrentHandRank)
+                    : HandRank.Unknown);
 
             <PlayerSeat
                 SeatNumber="seat"

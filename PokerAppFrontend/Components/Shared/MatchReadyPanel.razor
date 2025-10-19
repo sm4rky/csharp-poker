@@ -7,18 +7,21 @@
         Next match in: @CountdownText
     </p>
     <p class="text-white/80 text-sm font-medium" style="color: rgb(255 255 255 / 0.8)">
-        Ready: @(Ready.ReadySeats.Length)/@(Table.Players.Count)
+        Ready: @(Ready.ReadySeats.Length)/@(Table.Players.Count(p => p.Stack > 0))
     </p>
     <div class="w-full flex justify-center items-center gap-2">
         @foreach (var p in Table.Players)
         {
+            var isAlive = p.Stack > 0;
             var isReady = Ready.ReadySeats.Contains(p.SeatIndex);
             var color = isReady ? "hsl(var(--danger))" : "hsl(var(--accent) / 0.2)";
-
-            <div title="@p.Name"
-                 class="h-2 w-2 rounded-full @(isReady ? "bg-danger" : "bg-accent/20")"
-                 style=@($"height: 0.75rem; width: 0.75rem; background-color: {color};")>
-            </div>
+            @if (isAlive)
+            {
+                <div title="@p.Name"
+                     class="h-2 w-2 rounded-full @(isReady ? "bg-danger" : "bg-accent/20")"
+                     style=@($"height: 0.75rem; width: 0.75rem; background-color: {color};")>
+                </div>
+            }
         }
 
     </div>

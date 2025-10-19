@@ -1,14 +1,14 @@
 @using PokerAppFrontend.Enums
-<div class="absolute @Class z-30 text-sm lg:text-lg">
+<div class="absolute z-30 -translate-x-1/2 -translate-y-1/2 text-sm lg:text-lg" style="@Style">
     <p class="font-bold uppercase @(IsWinner ? "text-danger" : "text-accent")">
         @(ToHandRankText)
     </p>
 </div>
 
 @code {
-    [Parameter] public string Class { get; set; } = "";
     [Parameter] public HandRank HandRank { get; set; }
     [Parameter] public bool IsWinner { get; set; }
+    [Parameter] public string Style { get; set; } = "";
 
     private string ToHandRankText => HandRank switch
     {

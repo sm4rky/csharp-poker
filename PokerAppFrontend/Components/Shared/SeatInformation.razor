@@ -1,7 +1,8 @@
 @using PokerAppFrontend.Models
 
 <div
-    class="absolute @Class z-30 p-1 flex items-center justify-between gap-2 @(IsDimmed ? "opacity-60" : "")">
+    class="absolute z-30 -translate-x-1/2 -translate-y-1/2 p-1 flex items-center justify-between gap-2 @(IsDimmed ? "opacity-60" : "")"
+    style="@Style">
     <div class="relative h-12 w-12 rounded-full border-2 border-accent grid place-items-center text-accent">
         @if (Player?.IsBot == true)
         {
@@ -62,7 +63,7 @@
     [Parameter] public bool IsCurrentSeatToAct { get; set; }
     [Parameter] public bool IsPreviousSeatToAct { get; set; }
     [Parameter] public bool IsWinner { get; set; }
-    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string? Style { get; set; }
 
     private bool IsFold => Player?.HasFolded == true;
     private bool IsOut => Player?.IsOut == true;
