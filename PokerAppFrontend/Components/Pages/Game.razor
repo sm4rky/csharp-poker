@@ -5,6 +5,7 @@
 @inject States.RoomClientState Session
 @inject IRoomHubClient Hub
 @inject NavigationManager Nav
+@inject DialogService DialogService
 
 @implements IDisposable
 
@@ -59,8 +60,10 @@
     private ReadyInfoDto? _ready;
     private ShowdownResultDto? _showdown;
     private DefaultWinResultDto? _defaultWin;
+    private PlayerDto? _lastStanding;
     private string? _error;
     private bool _subscribed;
+    private bool _winnerOpen;
 
     protected override async Task OnInitializedAsync()
     {
@@ -77,6 +80,7 @@
             Hub.ReadyState += OnReadyState;
             Hub.ShowdownResult += OnShowdownResult;
             Hub.DefaultWinResult += OnDefaultWinResult;
+            Hub.LastStanding += OnLastStanding;
             Hub.Error += OnError;
             _subscribed = true;
         }
@@ -110,6 +114,7 @@
         Hub.ReadyState -= OnReadyState;
         Hub.ShowdownResult -= OnShowdownResult;
         Hub.DefaultWinResult -= OnDefaultWinResult;
+        Hub.LastStanding -= OnLastStanding;
         Hub.Error -= OnError;
         _subscribed = false;
     }
@@ -145,6 +150,37 @@
     {
         _defaultWin = dto;
         _showdown = null;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private void OnLastStanding(PlayerDto dto)
+    {
+        _lastStanding = dto;
+        _showdown = null;
+        _defaultWin = null;
+        _ready = null;
+
+        if (_winnerOpen) return;
+        _winnerOpen = true;
+
+        _ = DialogService.OpenAsync<WinnerAnnouncement>(
+            "Winner",
+            new Dictionary<string, object?>
+            {
+                ["Player"] = _lastStanding
+            },
+            new DialogOptions
+            {
+                Width = "300px",
+                CloseDialogOnOverlayClick = false,
+                Draggable = false,
+                Resizable = false
+            }
+        ).ContinueWith(_ =>
+        {
+            _winnerOpen = false;
+        });
+
         InvokeAsync(StateHasChanged);
     }
 

@@ -12,6 +12,7 @@ public interface IRoomHubClient : IAsyncDisposable
     event Action<DefaultWinResultDto>? DefaultWinResult;
     event Action<ShowdownResultDto>? ShowdownResult;
     event Action<ReadyInfoDto>? ReadyState;
+    event Action<PlayerDto>? LastStanding;
     event Action<string>? Error;
 
     Task JoinRoomAsync(string tableCode);

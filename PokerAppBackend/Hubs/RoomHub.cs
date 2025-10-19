@@ -221,6 +221,13 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         var result = tableService.Showdown(tableCode);
         var lastStanding = table.GetLastStanding();
         await BroadcastTable(tableCode);
+        if (lastStanding is not null)
+        {
+            await Clients.Group($"table:{tableCode}")
+                .SendAsync("LastStanding", lastStanding.ToPlayerDto(null));
+            return;
+        }
+
         await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto());
         await BeginNextMatchCountdown(tableCode);
     }

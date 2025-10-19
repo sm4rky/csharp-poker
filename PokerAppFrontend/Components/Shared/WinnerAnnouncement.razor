@@ -1,0 +1,52 @@
+@using PokerAppFrontend.Models
+@using PokerAppFrontend.Services
+@inject DialogService DialogService
+@inject NavigationManager Nav
+@inject IRoomHubClient Hub
+@inject States.RoomClientState Session
+
+<RadzenStack Orientation="Orientation.Vertical" Gap="12px" Style="width: 100%">
+    <p class="font-bold text-center text-xl" style="font-size: 1.25rem; line-height: 1.75rem;">CONGRATULATION</p>
+    <RadzenStack JustifyContent="JustifyContent.Start" AlignItems="AlignItems.Center" Gap="4px" Style="width: 100%">
+        <div class="text-xs text-muted-foreground" style="font-size: 0.75rem; line-height: 1rem;">Name</div>
+        <div class="text-xl font-semibold" style="font-size: 1.25rem; line-height: 1.75rem;">@Player?.Name</div>
+    </RadzenStack>
+
+    <RadzenStack JustifyContent="JustifyContent.Start" AlignItems="AlignItems.Center" Gap="4px" Style="width: 100%">
+        <div class="text-xs text-muted-foreground" style="font-size: 0.75rem; line-height: 1rem;">Stack</div>
+        <div class="text-xl text-success font-semibold" style="font-size: 1.25rem; line-height: 1.75rem;">@((Player?.Stack ?? 0).ToString())$</div>
+    </RadzenStack>
+
+    <RadzenButton Text="Back to lobby"
+                  ButtonStyle="ButtonStyle.Primary"
+                  Click="@OnLeaveRoomClick"
+                  Style="width:100%; margin-top:8px"/>
+</RadzenStack>
+
+@code {
+    [Parameter] public PlayerDto? Player { get; set; }
+
+    private bool _isSubmitting;
+
+    private async Task OnLeaveRoomClick()
+    {
+        if (_isSubmitting) return;
+        _isSubmitting = true;
+        try
+        {
+            if (Session.PlayerToken != null && Session.LastSeat != -1)
+                await Hub.LeaveSeatAsync(Session.PlayerToken);
+
+            await Hub.DisconnectAsync();
+            Session.Reset();
+
+            Nav.NavigateTo("/");
+            DialogService.Close();
+        }
+        finally
+        {
+            _isSubmitting = false;
+        }
+    }
+
+}

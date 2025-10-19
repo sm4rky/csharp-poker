@@ -18,6 +18,7 @@ public sealed class RoomHubClient(IOptions<ApiOptions> api) : IRoomHubClient, IA
     public event Action<DefaultWinResultDto>? DefaultWinResult;
     public event Action<ShowdownResultDto>? ShowdownResult;
     public event Action<ReadyInfoDto>? ReadyState;
+    public event Action<PlayerDto>? LastStanding;
     public event Action<string>? Error;
 
     public async Task JoinRoomAsync(string tableCode)
@@ -40,6 +41,7 @@ public sealed class RoomHubClient(IOptions<ApiOptions> api) : IRoomHubClient, IA
         _hub.On<ReadyInfoDto>("ReadyState", dto => ReadyState?.Invoke(dto));
         _hub.On<DefaultWinResultDto>("DefaultWinResult", dto => DefaultWinResult?.Invoke(dto));
         _hub.On<ShowdownResultDto>("ShowdownResult", dto => ShowdownResult?.Invoke(dto));
+        _hub.On<PlayerDto>("LastStanding", dto => LastStanding?.Invoke(dto));
         _hub.On<string>("Error", msg => Error?.Invoke(msg));
 
         await _hub.StartAsync();
