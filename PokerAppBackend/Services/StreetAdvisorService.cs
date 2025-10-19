@@ -335,7 +335,7 @@ public sealed class StreetAdvisorService(IEvaluateHandService evaluateHandServic
         }
 
         var keys = street == Street.Flop
-            ? nextTurnCounts.Keys.Intersect(nextTwoTurnCounts.Keys)
+            ? nextTurnCounts.Keys.Union(nextTwoTurnCounts.Keys)
             : nextTurnCounts.Keys;
 
         var unseenCount = unseen.Count;

@@ -43,6 +43,11 @@
         <PlayerControlPanel Table="_table"/>
     </div>
 
+    @if (_table?.BoardAdvisory is not null)
+    {
+        <HandAnalyzer Table="_table"/>
+    }
+
     @if (_ready is not null)
     {
         <MatchReadyPanel Table="_table" Ready="_ready"/>

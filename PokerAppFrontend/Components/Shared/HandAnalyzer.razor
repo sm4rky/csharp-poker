@@ -1,0 +1,321 @@
+@using PokerAppFrontend.Enums
+@using PokerAppFrontend.Models
+
+
+
+
+<div class="absolute top-2 left-2 z-50" style="top:.5rem;left:.5rem;">
+    <RadzenButton Click="@(() => sidebarExpanded = !sidebarExpanded)"
+                  Disabled="@(!HasAnythingToShow)"
+                  class="flex items-center h-10 rounded-lg bg-foreground text-xs gap-2"
+                  Size="ButtonSize.ExtraSmall"
+                  Style="height:2.5rem;border-radius:.75rem;background-color:hsl(var(--foreground))">
+        <span>Analyze</span>
+        <Blazicon Svg="Lucide.ArrowRight"/>
+    </RadzenButton>
+</div>
+
+<RadzenSidebar FullHeight="true"
+               Responsive="false"
+               @bind-Expanded="@sidebarExpanded"
+               style="position:absolute; z-index:60; width:30%;">
+    <RadzenStack AlignItems="AlignItems.Stretch" Gap="10px" class="p-4">
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween"
+                     AlignItems="AlignItems.Center">
+            <p class="text-xl font-bold" style="font-size: 1.25rem; line-height: 1.75rem; font-weight: 700">Poker
+                Advisory</p>
+            <RadzenStack AlignItems="AlignItems.End" class="rz-pt-2">
+                <RadzenButton Icon="west"
+                              Variant="Variant.Text"
+                              ButtonStyle="ButtonStyle.Dark"
+                              Click="@(() => sidebarExpanded = false)"/>
+            </RadzenStack>
+        </RadzenStack>
+
+        <RadzenStack AlignItems="AlignItems.Start" Gap="6px" class="overflow-y-auto">
+            <div class="w-full space-y-6"
+                 style="--tw-space-y-reverse: 0; margin-top: calc(1.5rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(1.5rem * var(--tw-space-y-reverse));">
+                <div class="w-full pb-4 border-b">
+                    <p class="text-lg font-semibold"
+                       style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                        Board Analysis
+                    </p>
+
+                    <div class="w-full grid grid-cols-2 gap-6"
+                         style="--tw-space-y-reverse: 0; margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(1rem * var(--tw-space-y-reverse)); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem;">
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Texture
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @Table?.BoardAdvisory?.Texture
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Trips &amp; Full House Possibility
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @Table?.BoardAdvisory?.TripsPossibleOnBoard
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Straight Threat
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @Table?.BoardAdvisory?.StraightThreatScore / 3
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Flush Threat
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @Table?.BoardAdvisory?.FlushThreatScore / 3
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="w-full">
+                    <p class="text-lg font-semibold"
+                       style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                        Player Analysis
+                    </p>
+
+                    <RadzenDropDown Data="@_advisories"
+                                    TextProperty="Label"
+                                    ValueProperty="SeatIndex"
+                                    TValue="int?"
+                                    Value="@_selectedSeat"
+                                    Change="OnSelectPlayer"
+                                    Disabled="@(_advisories.Count <= 1)"
+                                    Style="width:100%;" class="my-3"/>
+
+                    <div class="w-full grid grid-cols-2 gap-6 pb-4 border-b"
+                         style="--tw-space-y-reverse: 0; margin-top: calc(1rem * calc(1 - var(--tw-space-y-reverse))); margin-bottom: calc(1rem * var(--tw-space-y-reverse)); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.5rem;">
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Current Hand
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @ToHandRankText(SelectedPlayerAdvisory?.CurrentHandRank ?? "")
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Strength Percentile
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @($"{SelectedPlayerAdvisory?.StrengthPercentile:F2}%")
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Flush Draw Type
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @ToFlushDrawText(SelectedPlayerAdvisory?.FlushDraw ?? "")
+                            </p>
+                        </div>
+                        <div>
+                            <p class="text-sm text-muted-foreground"
+                               style="font-size: 0.875rem; line-height: 1.25rem; margin: 0; min-height: 1.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                Straight Draw Type
+                            </p>
+                            <p class="text-lg font-semibold"
+                               style="font-size: 1.125rem; line-height: 1.75rem; font-weight: 600; margin: 0;">
+                                @ToStraightDrawText(SelectedPlayerAdvisory?.StraightDraw ?? "")
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="w-full flex flex-col gap-3 mt-4">
+                        <p class="text-base font-semibold">Hand Ranks &amp; Improvement</p>
+                        <div class="w-full flex flex-col gap-3">
+                            @foreach (var rank in AllHandRanks)
+                            {
+                                var isCurrent = IsCurrentHandRank(rank);
+                                var prob = FindProb(rank);
+
+                                <div
+                                    class="px-2 py-4 w-full border rounded-lg flex items-center justify-between"
+                                    style="height:3rem; border-radius:.5rem; @(isCurrent ? "background-color:hsla(0,0%,100%,0.06);" : "background-color:transparent;")">
+
+                                    <div class="flex items-center gap-2">
+                                        <p class="text-lg font-semibold"
+                                           style="font-size:1.125rem; line-height:1.75rem; font-weight:600; margin:0;">
+                                            @ToHandRankText(rank.ToString())
+                                        </p>
+
+                                        @if (isCurrent)
+                                        {
+                                            <RadzenBadge Text="Current"
+                                                         BadgeStyle="BadgeStyle.Dark" class="ml-4"/>
+                                        }
+                                    </div>
+
+                                    <div class="flex items-center justify-end gap-3"
+                                         style="display:flex; align-items:center; justify-content:flex-end; gap:.75rem;">
+                                        @if (prob is not null)
+                                        {
+                                            <div class="flex items-center gap-2"
+                                                 style="display:flex; align-items:center; gap:.5rem;">
+                                                <span class="text-xs text-muted-foreground"
+                                                      style="font-size:.75rem; opacity:.8;">Next:</span>
+                                                <span class="text-sm font-semibold"
+                                                      style="font-size:.875rem; font-weight:600;">
+                                                    @($"{prob.ThisStreet:F2}%")
+                                                </span>
+                                            </div>
+                                            <div class="flex items-center gap-2"
+                                                 style="display:flex; align-items:center; gap:.5rem;">
+                                                <span class="text-xs text-muted-foreground"
+                                                      style="font-size:.75rem; opacity:.8;">T+R:</span>
+                                                <span class="text-sm font-semibold"
+                                                      style="font-size:.875rem; font-weight:600;">
+                                                    @($"{prob.ThisAndNextStreetCumulative:F2}%")
+                                                </span>
+                                            </div>
+                                        }
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </RadzenStack>
+    </RadzenStack>
+</RadzenSidebar>
+
+@if (sidebarExpanded)
+{
+    <div @onclick="@(() => sidebarExpanded = false)" class="rz-dialog-mask"
+         style="position: absolute; z-index: 50"></div>
+}
+
+@code {
+    [Parameter, EditorRequired] public TableDto? Table { get; set; }
+
+    private bool sidebarExpanded;
+    private readonly List<PlayerOption> _advisories = [];
+    private int? _selectedSeat;
+
+    private bool HasAnythingToShow =>
+        (Table?.BoardAdvisory is not null) || _advisories.Count > 0;
+
+    private PlayerOption? SelectedOption =>
+        _selectedSeat is { } s ? _advisories.FirstOrDefault(x => x.SeatIndex == s) : null;
+
+    private PlayerAdvisoryDto? SelectedPlayerAdvisory => SelectedOption?.Advisory;
+
+    protected override void OnParametersSet()
+    {
+        _advisories.Clear();
+        _selectedSeat = null;
+
+        if (Table?.Players is not { Count: > 0 })
+            return;
+
+        var all = Table.Players
+            .Where(p => p.PlayerAdvisory is not null)
+            .Select(p => new PlayerOption
+            {
+                SeatIndex = p.SeatIndex,
+                Label = $"{p.Name} (Seat {p.SeatIndex + 1})",
+                Advisory = p.PlayerAdvisory!
+            })
+            .ToList();
+
+        if (all.Count <= 0) return;
+        _advisories.AddRange(all);
+        _selectedSeat = _advisories[0].SeatIndex;
+    }
+
+    private void OnSelectPlayer(object? value)
+    {
+        _selectedSeat = value as int?;
+    }
+
+    private sealed class PlayerOption
+    {
+        public int SeatIndex { get; set; }
+        public string Label { get; set; } = "";
+        public PlayerAdvisoryDto Advisory { get; set; } = null!;
+    }
+
+    private static readonly HandRank[] AllHandRanks =
+        Enum.GetValues<HandRank>()
+            .Where(r => r != HandRank.Unknown)
+            .OrderByDescending(r => r)
+            .ToArray();
+
+    private bool IsCurrentHandRank(HandRank rank)
+    {
+        var current = SelectedPlayerAdvisory?.CurrentHandRank;
+        if (string.IsNullOrWhiteSpace(current)) return false;
+        return Normalize(current) == Normalize(rank.ToString());
+    }
+
+    private HandRankImprovementProbabilityDto? FindProb(HandRank rank)
+    {
+        var list = SelectedPlayerAdvisory?.HandRankImprovementProbabilityDtos;
+        if (list is null || list.Count == 0) return null;
+
+        var key = Normalize(rank.ToString());
+        return list.FirstOrDefault(d => Normalize(d.TargetHandRank) == key);
+    }
+
+    private static string Normalize(string s) =>
+        (s ?? string.Empty).Trim().ToLowerInvariant();
+
+    private static string ToHandRankText(string handRank) => handRank.Trim().ToLowerInvariant() switch
+    {
+        "highcard" => "High Card",
+        "onepair" => "One Pair",
+        "twopair" => "Two Pair",
+        "threeofakind" => "Three Of A Kind",
+        "straight" => "Straight",
+        "flush" => "Flush",
+        "fullhouse" => "Full House",
+        "fourofakind" => "Four Of A Kind",
+        "straightflush" => "Straight Flush",
+        _ => throw new ArgumentOutOfRangeException()
+    };
+
+    private static string ToFlushDrawText(string flushDraw) => flushDraw.Trim().ToLowerInvariant() switch
+    {
+        "none" => "None",
+        "backdoor" => "Backdoor",
+        "fourflush" => "FourFlush",
+        _ => throw new ArgumentOutOfRangeException()
+    };
+
+    private static string ToStraightDrawText(string straightDraw) => straightDraw.Trim().ToLowerInvariant() switch
+    {
+        "none" => "None",
+        "backdoor" => "Backdoor",
+        "gutshot" => "Gutshot",
+        "oesd" => "Open-Ended Straight Draw",
+        _ => throw new ArgumentOutOfRangeException()
+    };
+
+}
+
