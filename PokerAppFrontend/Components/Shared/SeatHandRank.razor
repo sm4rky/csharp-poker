@@ -1,7 +1,10 @@
 @using PokerAppFrontend.Enums
-<div class="absolute z-30 -translate-x-1/2 -translate-y-1/2 text-sm lg:text-lg" style="@Style">
-    <p class="font-bold uppercase @(IsWinner ? "text-danger" : "text-accent")">
-        @(ToHandRankText)
+
+<div
+    class="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 inline-block w-max max-w-none !whitespace-nowrap pointer-events-none select-none"
+    style="@Style">
+    <p class="font-bold @(IsWinner ? "text-danger animate-pulse" : "text-accent") text-sm lg:text-lg tracking-wide drop-shadow">
+        @ToHandRankHtml
     </p>
 </div>
 
@@ -24,5 +27,8 @@
         HandRank.Unknown => "UNKNOWN",
         _ => throw new ArgumentOutOfRangeException()
     };
+
+    private MarkupString ToHandRankHtml =>
+        (MarkupString)ToHandRankText.Replace(" ", "&nbsp;");
 
 }

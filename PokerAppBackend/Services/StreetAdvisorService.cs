@@ -38,8 +38,7 @@ public sealed class StreetAdvisorService(IEvaluateHandService evaluateHandServic
             : BoardTexture.Dry;
 
         // Wet if both connected and twotone
-        if ((straightThreatScore >= 2 && flushThreatScore >= 1) || (connected && twoTone))
-            texture = BoardTexture.Wet;
+        if (IsWet(street, straightThreatScore, flushThreatScore, twoTone)) texture = BoardTexture.Wet;
 
         return new BoardAdvisory
         {
@@ -138,9 +137,9 @@ public sealed class StreetAdvisorService(IEvaluateHandService evaluateHandServic
         return hasAce && twoToFive;
     }
 
-    // Flop : c=3 ->2, c=2 ->1, else 0
-    // Turn : c=4 ->3, c=3 ->2, c=2 ->1, else 0
-    // River: c=5 ->3, c=4 ->2, c=3 ->1, else 0
+    // Flop : c>=3 ->2, else 1
+    // Turn : c>=4 ->3, c>=3 ->2, c>=2 ->1, else 0
+    // River: c>=4 ->3, c>=3 ->2, else 0
     private static int CalculateFlushThreatScore(Street street, HandAnalysis analysis)
     {
         var maxSuitOnBoard = 0;
@@ -149,16 +148,16 @@ public sealed class StreetAdvisorService(IEvaluateHandService evaluateHandServic
 
         return street switch
         {
-            Street.Flop => (maxSuitOnBoard >= 3 ? 2 : (maxSuitOnBoard >= 2 ? 1 : 0)),
+            Street.Flop => (maxSuitOnBoard >= 3 ? 2 : 1),
             Street.Turn => (maxSuitOnBoard >= 4 ? 3 : (maxSuitOnBoard >= 3 ? 2 : (maxSuitOnBoard >= 2 ? 1 : 0))),
-            Street.River => (maxSuitOnBoard >= 5 ? 3 : (maxSuitOnBoard >= 4 ? 2 : (maxSuitOnBoard >= 3 ? 1 : 0))),
+            Street.River => (maxSuitOnBoard >= 4 ? 3 : (maxSuitOnBoard >= 3 ? 2 : 0)),
             _ => 0
         };
     }
 
-    // Flop : k>=3 ->1
-    // Turn : k>=4 ->2; k>=3 ->1
-    // River: k>=5 ->3; k>=4 ->2; k>=3 ->1
+    // Flop : k>=3 ->2, else 1
+    // Turn : k>=4 ->3; k>=3 ->2, k>=2 ->1, else 0
+    // River: k>=4 ->3; k>=3 ->2, else 0
     private static int CalculateStraightThreatScore(ushort rankMask, Street street)
     {
         var straightThreatScore = 0;
@@ -167,9 +166,9 @@ public sealed class StreetAdvisorService(IEvaluateHandService evaluateHandServic
             var count = CountRanksInRange(rankMask, lowRank, highRank);
             var currentScore = street switch
             {
-                Street.Flop => (count >= 3 ? 1 : 0),
-                Street.Turn => (count >= 4 ? 2 : (count >= 3 ? 1 : 0)),
-                Street.River => (count >= 5 ? 3 : (count >= 4 ? 2 : (count >= 3 ? 1 : 0))),
+                Street.Flop => (count >= 3 ? 2 : 1),
+                Street.Turn => (count >= 4 ? 3 : (count >= 3 ? 2 : (count >= 2 ? 1 : 0))),
+                Street.River => (count >= 4 ? 3 : (count >= 3 ? 2 : 0)),
                 _ => 0
             };
             straightThreatScore = Math.Max(straightThreatScore, currentScore);
@@ -177,6 +176,19 @@ public sealed class StreetAdvisorService(IEvaluateHandService evaluateHandServic
 
         return straightThreatScore;
     }
+
+    private static bool IsWet(Street street, int straightThreat, int flushThreat, bool twoTone)
+    {
+        var maxT = Math.Max(straightThreat, flushThreat);
+        var minT = Math.Min(straightThreat, flushThreat);
+        return street switch
+        {
+            Street.Flop => (maxT >= 2 && minT >= 1) || (twoTone && straightThreat >= 2),
+            Street.Turn or Street.River => (maxT >= 3 && minT >= 1) || (straightThreat >= 2 && flushThreat >= 2),
+            _ => false
+        };
+    }
+
 
     private static IEnumerable<(int lowRank, int highRank)> GetFiveRanksRange()
     {

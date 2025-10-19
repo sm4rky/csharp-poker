@@ -1,7 +1,9 @@
 @using PokerAppFrontend.Enums
 @using PokerAppFrontend.Models
 
-<div class="absolute z-30 -translate-x-1/2 -translate-y-1/2 flex gap-3 items-center justify-center" style="@Style">
+<div
+    class="absolute z-30 -translate-x-1/2 -translate-y-1/2 flex flex-nowrap gap-3 items-center justify-center overflow-visible"
+    style="@Style">
     @{
         var c1 = Player?.Hole?.Count > 0 ? Player.Hole[0] : null;
         var c2 = Player?.Hole?.Count > 1 ? Player.Hole[1] : null;
@@ -10,14 +12,24 @@
     }
     <PokerCard Card="c1" UsePlaceholderWhenNull="usePlaceholder"/>
     <PokerCard Card="c2" UsePlaceholderWhenNull="usePlaceholder"/>
+
+    @if (HandRank != HandRank.Unknown)
+    {
+        <SeatHandRank Style="@HandRankStyle()" HandRank="@HandRank" IsWinner="@IsWinner"/>
+    }
 </div>
 
 @code {
     [Parameter] public PlayerDto? Player { get; set; }
     [Parameter] public Street Street { get; set; }
+    [Parameter] public int SeatNumber { get; set; }
+    [Parameter] public HandRank HandRank { get; set; }
+    [Parameter] public bool IsWinner { get; set; }
     [Parameter] public string? Style { get; set; }
 
     private bool IsHandInProgress() =>
         Street is Street.PreFlop or Street.Flop or Street.Turn or Street.River or Street.Showdown;
+
+    private string HandRankStyle() => SeatNumber is 2 or 3 ? "top: -25%" : "top: 125%";
 
 }

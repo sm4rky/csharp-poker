@@ -14,7 +14,7 @@
         Style="@InfoStyle"/>
 }
 
-<SeatHole Player="Player" Street="Street" Style="@HoleStyle"/>
+<SeatHole Player="Player" Street="Street" SeatNumber="@SeatNumber" HandRank="@HandRank" IsWinner="@IsWinner" Style="@HoleStyle"/>
 
 @if (IsDealer)
 {
@@ -24,11 +24,6 @@
 @if (Player?.CommittedThisStreet > 0)
 {
     <SeatCommitmentThisStreet Commitment="Player?.CommittedThisStreet ?? 0" Style="@CommitStyle"/>
-}
-
-@if (HandRank != HandRank.Unknown)
-{
-    <SeatHandRank Style="@HandRankStyle" HandRank="@HandRank" IsWinner="@IsWinner"/>
 }
 
 @code {
@@ -58,7 +53,7 @@
         }.Where(s => s is not null)) + ";";
     }
 
-    private sealed record SeatLayout(Pos Info, Pos Hole, Pos Chip, Pos Commit, Pos HandRankPos);
+    private sealed record SeatLayout(Pos Info, Pos Hole, Pos Chip, Pos Commit);
 
     private static readonly IReadOnlyDictionary<int, SeatLayout> Layouts = new Dictionary<int, SeatLayout>
     {
@@ -66,43 +61,37 @@
             Info: new Pos(Top: -10, Right: 15),
             Hole: new Pos(Top: 15, Right: 20),
             Chip: new Pos(Top: 15, Right: 20),
-            Commit: new Pos(Top: 35, Right: 22),
-            HandRankPos: new Pos(Top: 26, Right: 21)
+            Commit: new Pos(Top: 35, Right: 22)
         ),
         [1] = new(
             Info: new Pos(Top: 50, Right: -22),
             Hole: new Pos(Top: 50, Right: 0),
             Chip: new Pos(Top: 50, Right: 0),
-            Commit: new Pos(Top: 50, Right: 15),
-            HandRankPos: new Pos(Top: 61, Right: 1)
+            Commit: new Pos(Top: 50, Right: 15)
         ),
         [2] = new(
             Info: new Pos(Top: 110, Right: 15),
             Hole: new Pos(Top: 85, Right: 20),
             Chip: new Pos(Top: 85, Right: 20),
-            Commit: new Pos(Top: 65, Right: 22),
-            HandRankPos: new Pos(Top: 74, Right: 21)
+            Commit: new Pos(Top: 65, Right: 22)
         ),
         [3] = new(
             Info: new Pos(Top: 110, Right: 58),
             Hole: new Pos(Top: 85, Right: 63),
             Chip: new Pos(Top: 85, Right: 63),
-            Commit: new Pos(Top: 65, Right: 65),
-            HandRankPos: new Pos(Top: 74, Right: 64)
+            Commit: new Pos(Top: 65, Right: 65)
         ),
         [4] = new(
             Info: new Pos(Top: 50, Right: 94),
             Hole: new Pos(Top: 50, Right: 82),
             Chip: new Pos(Top: 50, Right: 82),
-            Commit: new Pos(Top: 50, Left: 20),
-            HandRankPos: new Pos(Top: 61, Right: 83)
+            Commit: new Pos(Top: 50, Left: 20)
         ),
         [5] = new(
             Info: new Pos(Top: -10, Right: 58),
             Hole: new Pos(Top: 15, Right: 63),
             Chip: new Pos(Top: 15, Right: 63),
-            Commit: new Pos(Top: 35, Right: 65),
-            HandRankPos: new Pos(Top: 26, Right: 63)
+            Commit: new Pos(Top: 35, Right: 65)
         ),
     };
 
@@ -112,7 +101,6 @@
     private string HoleStyle => L.Hole.ToStyle();
     private string ChipStyle => L.Chip.ToStyle();
     private string CommitStyle => L.Commit.ToStyle();
-    private string HandRankStyle => L.HandRankPos.ToStyle();
 
     protected override void OnInitialized()
     {
