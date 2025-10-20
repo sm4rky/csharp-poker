@@ -3,14 +3,22 @@ using PokerAppBackend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-
 builder.Services.AddSignalR();
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAll", policy =>
+    {
+        policy
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .SetIsOriginAllowed(_ => true)
+            .AllowCredentials();
+    });
+});
 
 builder.Services.AddSingleton<IDeckService, DeckService>();
 builder.Services.AddSingleton<IEvaluateHandService, EvaluateHandService>();
@@ -20,7 +28,6 @@ builder.Services.AddSingleton<ITableService, TableService>();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -33,6 +40,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.UseCors("AllowAll");
 app.MapHub<RoomHub>("/roomhub");
 
 app.Run();
