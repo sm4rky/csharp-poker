@@ -121,17 +121,26 @@ export function DemoPokerTable({baseUrl, tableCode, initialRejoinToken}: PokerTa
         prevTableRef.current = curr;
     }, [table]);
 
-    // @ts-ignore
-    useEffect(() => showdown && appendLog("Showdown! winners: " + JSON.stringify(showdown.winners)), [showdown]);
+    useEffect(() => {
+        if (showdown)
+            appendLog("Showdown! winners: " + JSON.stringify(showdown.winners));
+    }, [showdown]);
 
-    // @ts-ignore
-    useEffect(() => defaultWin && appendLog(`Default win: Player #${defaultWin.winner}`), [defaultWin]);
+    useEffect(() => {
+        if (defaultWin)
+            appendLog(`Default win: Player #${defaultWin.winner}`);
+    }, [defaultWin]);
 
-    // @ts-ignore
-    useEffect(() => ready && appendLog(`Ready seats: ${ready.readySeats?.join(", ") || "none"} (deadline ${ready.deadlineUtc})`), [ready]);
+    useEffect(() => {
+        if (ready)
+            appendLog(`Ready seats: ${ready.readySeats?.join(", ") || "none"} (deadline ${ready.deadlineUtc})`);
+    }, [ready]);
 
-    // @ts-ignore
-    useEffect(() => lastStanding && appendLog(`Last standing: ${lastStanding.name} (${lastStanding.stack} chips)`), [lastStanding]);
+    useEffect(() => {
+        if (lastStanding)
+            appendLog(`Last standing: ${lastStanding.name} (${lastStanding.stack} chips)`);
+    }, [lastStanding]);
+
 
     return (
         <div style={{padding: 20, display: "grid", gap: 12, fontFamily: "sans-serif", maxWidth: 800}}>
