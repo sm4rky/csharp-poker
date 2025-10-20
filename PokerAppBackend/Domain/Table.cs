@@ -40,6 +40,8 @@ public sealed class Table
     public int LastRaiseSize { get; private set; } = 0;
     private readonly PotManager _potManager = new PotManager();
     public BoardAdvisory? BoardAdvisory { get; private set; }
+    public long HandId { get; private set; } = 0;
+    public long ActionSeq { get; private set; } = 0;
 
     public Table(string tableCode, int playerCount, IEnumerable<string?> initialNamesOrNullForBot)
     {
@@ -85,7 +87,9 @@ public sealed class Table
 
     public void StartHand()
     {
-        Dealer = NextActingSeat(Dealer);
+        HandId++;
+        ActionSeq = 0;
+        Dealer = NextEligibleSeat(Dealer);
 
         Round += 1;
 
@@ -291,6 +295,32 @@ public sealed class Table
         _potManager.Add(seatIndex, committedChips);
     }
 
+    public (bool canRaise, int minRaiseTo, int maxRaiseTo) GetRaiseBounds(int seatIndex)
+    {
+        var player = Players[seatIndex];
+
+        if (player.HasFolded || player.Stack <= 0)
+            return (false, 0, 0);
+
+        var neededAmountToCall = Math.Max(0, CurrentBet - player.CommittedThisStreet);
+        var maxRaiseTo = player.CommittedThisStreet + player.Stack;
+
+        int minRaiseTo;
+        if (CurrentBet == 0)
+        {
+            minRaiseTo = CurrentBlindLevel.BigBlindAmount;
+        }
+        else
+        {
+            minRaiseTo = CurrentBet + LastRaiseSize;
+        }
+
+        var canNonAllInRaise = player.Stack > neededAmountToCall && maxRaiseTo >= minRaiseTo;
+
+        return !canNonAllInRaise ? (false, 0, 0) : (true, minRaiseTo, maxRaiseTo);
+    }
+
+
     public IReadOnlyList<SidePot> BuildSidePotsSnapshot()
     {
         return _potManager.BuildSidePots(Players)
@@ -323,6 +353,18 @@ public sealed class Table
 
     internal int NextSeat(int currentSeat) => (currentSeat + 1) % Players.Count;
     private int PrevSeat(int currentSeat) => (currentSeat - 1 + Players.Count) % Players.Count;
+    
+    private int NextEligibleSeat(int currentSeat)
+    {
+        var n = Players.Count;
+        for (var i = 1; i <= n; i++)
+        {
+            var s = (currentSeat + i) % n;
+            if (!Players[s].IsOut && Players[s].Stack > 0)
+                return s;
+        }
+        return currentSeat;
+    }
 
     internal int NextActingSeat(int currentSeat)
     {
@@ -434,4 +476,6 @@ public sealed class Table
             AllBotsSinceUtc = null;
         }
     }
+
+    internal void IncreaseActionSeq() => ActionSeq++;
 }

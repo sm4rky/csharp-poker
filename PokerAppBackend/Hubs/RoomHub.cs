@@ -7,14 +7,15 @@ using PokerAppBackend.Services;
 
 namespace PokerAppBackend.Hubs;
 
-public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext) : Hub
+public class RoomHub(ITableService tableService, IBotService botService, IHubContext<RoomHub> hubContext) : Hub
 {
     private static readonly TimeSpan Grace = TimeSpan.FromSeconds(12);
-
+    private static readonly TimeSpan BotDelay = TimeSpan.FromSeconds(2);
+    
     //Countdown to next match
     private static readonly TimeSpan ReadyWindow = TimeSpan.FromSeconds(15);
 
-    //connectionId -> (tableCode, seatIndex, token)
+    // connectionId -> (tableCode, seatIndex, token)
     private static readonly ConcurrentDictionary<string, (string TableCode, int? SeatIndex, string? Token)>
         ConnectionMap = new();
 
@@ -22,8 +23,8 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
     private static readonly ConcurrentDictionary<string, PlayerSession> PlayerMap = new();
 
     private static readonly ConcurrentDictionary<string, CancellationTokenSource> PendingKicksMap = new();
-
     private static readonly ConcurrentDictionary<string, ReadyInfo> PendingReadyTableMap = new();
+    private static readonly ConcurrentDictionary<string, CancellationTokenSource> PendingBotMap = new();
 
     public async Task JoinRoom(string tableCode)
     {
@@ -137,27 +138,36 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
 
     public async Task StartHand(string tableCode)
     {
+        if (PendingBotMap.TryRemove(tableCode, out var prevCts))
+        {
+            prevCts.Cancel();
+            prevCts.Dispose();
+        }
+
         tableService.StartHand(tableCode);
         await BroadcastTable(tableCode);
+        await ShowdownIfRiverOver(tableCode);
     }
 
-    //Consider drop DealFlop, DealTurn, DealRiver later
     public async Task DealFlop(string tableCode)
     {
         tableService.DealFlop(tableCode);
         await BroadcastTable(tableCode);
+        await ShowdownIfRiverOver(tableCode);
     }
 
     public async Task DealTurn(string tableCode)
     {
         tableService.DealTurn(tableCode);
         await BroadcastTable(tableCode);
+        await ShowdownIfRiverOver(tableCode);
     }
 
     public async Task DealRiver(string tableCode)
     {
         tableService.DealRiver(tableCode);
         await BroadcastTable(tableCode);
+        await ShowdownIfRiverOver(tableCode);
     }
 
     public async Task Check(string token)
@@ -202,6 +212,15 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
             await Clients.Group($"table:{playerInfo.TableCode}")
                 .SendAsync("DefaultWinResult", new DefaultWinResultDto() { Winner = foldResult.Winner });
 
+            var t = tableService.Get(playerInfo.TableCode);
+            var lastStanding = t.GetLastStanding();
+            if (lastStanding is not null)
+            {
+                await Clients.Group($"table:{playerInfo.TableCode}")
+                    .SendAsync("LastStanding", lastStanding.ToPlayerDto(null));
+                return;
+            }
+
             await BeginNextMatchCountdown(playerInfo.TableCode);
             return;
         }
@@ -216,11 +235,13 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
 
         var contenders = table.Players.Count(p =>
             p is { HasFolded: false, IsOut: false, Hole.Count: 2, CommittedThisHand: > 0 });
-        if (contenders <= 1) return;
+        if (contenders == 0) return;
 
         var result = tableService.Showdown(tableCode);
-        var lastStanding = table.GetLastStanding();
+
         await BroadcastTable(tableCode);
+        await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto());
+        var lastStanding = table.GetLastStanding();
         if (lastStanding is not null)
         {
             await Clients.Group($"table:{tableCode}")
@@ -228,7 +249,30 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
             return;
         }
 
-        await Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto());
+        await BeginNextMatchCountdown(tableCode);
+    }
+
+    private async Task ShowdownIfRiverOverViaHubContext(string tableCode)
+    {
+        var table = tableService.Get(tableCode);
+        if (table.Street != Street.Showdown) return;
+
+        var contenders = table.Players.Count(p =>
+            p is { HasFolded: false, IsOut: false, Hole.Count: 2, CommittedThisHand: > 0 });
+        if (contenders == 0) return;
+
+        var result = tableService.Showdown(tableCode);
+
+        await BroadcastTableViaHubContext(tableCode);
+        await hubContext.Clients.Group($"table:{tableCode}").SendAsync("ShowdownResult", result.ToShowdownResultDto());
+        var lastStanding = table.GetLastStanding();
+        if (lastStanding is not null)
+        {
+            await hubContext.Clients.Group($"table:{tableCode}")
+                .SendAsync("LastStanding", lastStanding.ToPlayerDto(null));
+            return;
+        }
+
         await BeginNextMatchCountdown(tableCode);
     }
 
@@ -239,9 +283,10 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         foreach (var (connectionId, info) in ConnectionMap.ToArray())
         {
             if (info.TableCode != tableCode) continue;
-            var a = table.ToTableDto(info.SeatIndex);
             await Clients.Client(connectionId).SendAsync("TableState", table.ToTableDto(info.SeatIndex));
         }
+
+        await ScheduleBotAction(tableCode);
     }
 
     private async Task BroadcastTableViaHubContext(string tableCode)
@@ -253,6 +298,8 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
             if (info.TableCode != tableCode) continue;
             await hubContext.Clients.Client(connectionId).SendAsync("TableState", table.ToTableDto(info.SeatIndex));
         }
+
+        await ScheduleBotAction(tableCode);
     }
 
     private async Task BeginNextMatchCountdown(string tableCode)
@@ -264,6 +311,14 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
         }
 
         var table = tableService.Get(tableCode);
+        var lastStanding = table.GetLastStanding();
+        if (lastStanding is not null)
+        {
+            await hubContext.Clients.Group($"table:{tableCode}")
+                .SendAsync("LastStanding", lastStanding.ToPlayerDto(null));
+            return;
+        }
+
         var info = new ReadyInfo
         {
             DeadlineUtc = DateTime.UtcNow.Add(ReadyWindow),
@@ -326,6 +381,15 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
                 {
                     readyInfo.CancellationTokenSource.Cancel();
                     readyInfo.CancellationTokenSource.Dispose();
+
+                    var champ = table.GetLastStanding();
+                    if (champ is not null)
+                    {
+                        await Clients.Group($"table:{playerInfo.TableCode}")
+                            .SendAsync("LastStanding", champ.ToPlayerDto(null));
+                        return;
+                    }
+
                     await StartHand(playerInfo.TableCode);
                 }
             }
@@ -345,5 +409,124 @@ public class RoomHub(ITableService tableService, IHubContext<RoomHub> hubContext
             ? Task.CompletedTask
             : hubContext.Clients.Group($"table:{tableCode}")
                 .SendAsync("ReadyState", readyInfo.ToReadyInfoDto());
+    }
+
+    private async Task ScheduleBotAction(string tableCode)
+    {
+        var table = tableService.Get(tableCode);
+        var currentSeatToAct = table.CurrentSeatToAct;
+        if (currentSeatToAct is null || table.Street == Street.Showdown) return;
+        if (!table.Players[currentSeatToAct.Value].IsBot) return;
+
+        if (PendingBotMap.TryRemove(tableCode, out var old))
+        {
+            old.Cancel();
+            old.Dispose();
+        }
+
+        var stamp = (handId: table.HandId, street: table.Street, seat: currentSeatToAct.Value, seq: table.ActionSeq);
+        var cts = new CancellationTokenSource();
+        PendingBotMap[tableCode] = cts;
+
+        _ = Task.Run(async () =>
+        {
+            try
+            {
+                await Task.Delay(BotDelay, cts.Token);
+
+                var t2 = tableService.Get(tableCode);
+                if (t2.HandId != stamp.handId || t2.Street != stamp.street ||
+                    t2.CurrentSeatToAct != stamp.seat || t2.ActionSeq != stamp.seq) return;
+
+                var player = t2.Players[stamp.seat];
+                var pa = player.PlayerAdvisory;
+                var ba = t2.BoardAdvisory;
+                var bounds = t2.GetRaiseBounds(stamp.seat);
+
+                var act = botService.SetBotAction(t2, stamp.seat, pa, ba, bounds);
+
+                switch (act.Action)
+                {
+                    case PlayerAction.Check:
+                        tableService.Check(tableCode, stamp.seat);
+                        break;
+
+                    case PlayerAction.Call:
+                        tableService.Call(tableCode, stamp.seat);
+                        break;
+
+                    case PlayerAction.Raise:
+                        tableService.Raise(tableCode, stamp.seat, act.RaiseTo!.Value);
+                        break;
+
+                    case PlayerAction.Fold:
+                    {
+                        var foldResult = tableService.Fold(tableCode, stamp.seat);
+                        await BroadcastTableViaHubContext(tableCode);
+
+                        if (foldResult.IsMatchOver)
+                        {
+                            await hubContext.Clients.Group($"table:{tableCode}")
+                                .SendAsync("DefaultWinResult", new DefaultWinResultDto { Winner = foldResult.Winner });
+
+                            var t3 = tableService.Get(tableCode);
+                            var champ = t3.GetLastStanding();
+                            if (champ is not null)
+                            {
+                                await hubContext.Clients.Group($"table:{tableCode}")
+                                    .SendAsync("LastStanding", champ.ToPlayerDto(null));
+                                return;
+                            }
+
+                            await BeginNextMatchCountdown(tableCode);
+                            return;
+                        }
+
+                        await ShowdownIfRiverOverViaHubContext(tableCode);
+                        await ScheduleBotAction(tableCode);
+                        return;
+                    }
+
+                    case PlayerAction.AllIn:
+                    {
+                        var maxTo = player.CommittedThisStreet + player.Stack;
+                        if (t2.CurrentBet == 0)
+                        {
+                            tableService.Raise(tableCode, stamp.seat, maxTo);
+                        }
+                        else
+                        {
+                            var need = Math.Max(0, t2.CurrentBet - player.CommittedThisStreet);
+                            if (player.Stack <= need)
+                                tableService.Call(tableCode, stamp.seat);
+                            else
+                                tableService.Raise(tableCode, stamp.seat, maxTo);
+                        }
+
+                        break;
+                    }
+                }
+
+                await BroadcastTableViaHubContext(tableCode);
+                await ShowdownIfRiverOverViaHubContext(tableCode);
+                await ScheduleBotAction(tableCode);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            catch (Exception ex)
+            {
+                await hubContext.Clients.Group($"table:{tableCode}")
+                    .SendAsync("Error", $"BotTask error: {ex.Message}");
+            }
+            finally
+            {
+                if (PendingBotMap.TryGetValue(tableCode, out var curr) && curr == cts)
+                {
+                    PendingBotMap.TryRemove(tableCode, out _);
+                    cts.Dispose();
+                }
+            }
+        });
     }
 }

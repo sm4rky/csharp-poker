@@ -15,6 +15,7 @@ builder.Services.AddSignalR();
 builder.Services.AddSingleton<IDeckService, DeckService>();
 builder.Services.AddSingleton<IEvaluateHandService, EvaluateHandService>();
 builder.Services.AddSingleton<IStreetAdvisorService, StreetAdvisorService>();
+builder.Services.AddSingleton<IBotService, BotService>();
 builder.Services.AddSingleton<ITableService, TableService>();
 
 var app = builder.Build();

@@ -325,6 +325,7 @@ public sealed class TableService(IEvaluateHandService evaluateHandService, IStre
     private void AdvanceToNextStreet(Table table)
     {
         table.ResetAtStreetStart();
+        table.IncreaseActionSeq();
 
         switch (table.Street)
         {
@@ -402,6 +403,7 @@ public sealed class TableService(IEvaluateHandService evaluateHandService, IStre
 
         table.SetCurrentSeatToAct(next);
         table.ComputeAllPlayersLegalActions();
+        table.IncreaseActionSeq();
     }
 
     private static void GuardAction(Table t, int seatIndex)
