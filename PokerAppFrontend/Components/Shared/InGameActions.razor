@@ -134,7 +134,7 @@
 
     private int MinRaise => Math.Max(Player.CommittedThisStreet + 1, Table.CurrentBetAmount == 0 ? Table.BigBlindAmount : Table.CurrentBetAmount + Table.LastRaiseSize);
     private int MaxRaise => Player.CommittedThisStreet + Player.Stack;
-    private static string Step => "10";
+    private static string Step => "5";
     private int _raiseAmount;
 
     private int RaiseAdditionalCost => Math.Max(0, _raiseAmount - Player.CommittedThisStreet);
